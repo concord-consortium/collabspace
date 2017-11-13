@@ -1,9 +1,13 @@
 const webpack = require("webpack");
 const ExtractTextPlugin = require("extract-text-webpack-plugin");
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const isDev = process.env.NODE_ENV === "development";
+const cssFilename = isDev ? "styles.css" : "styles.[contenthash].css";
+const jsFilename = isDev ? "[name].js" : "[name].[chunkhash].js";
 
 const extractSass = new ExtractTextPlugin({
-   filename: "[name].[contenthash].css",
-   disable: process.env.NODE_ENV === "development"
+   filename: cssFilename
 });
 
 module.exports = [
@@ -15,12 +19,12 @@ module.exports = [
         },
 
         output: {
-            filename: "[name].js",
+            filename: jsFilename,
             path: __dirname + "/dist/assets"
         },
 
         // Enable sourcemaps for debugging webpack's output.
-        devtool: "source-map",
+        devtool: isDev ? "source-map" : "",
 
         resolve: {
             // Add '.ts' and '.tsx' as resolvable extensions.
@@ -39,18 +43,25 @@ module.exports = [
                     test: /\.scss$/,
                     use: extractSass.extract({
                         use: [
-                            {loader: "style-loader"},
-                            {loader: "css-loader", options: { sourceMap: true }},
-                            {loader: "sass-loader", options: { sourceMap: true }}
-                        ]
+                            {loader: "css-loader", options: { sourceMap: isDev }},
+                            {loader: "sass-loader", options: { sourceMap: isDev }}
+                        ],
+                        fallback: 'style-loader'
                     })
                 }
             ]
         },
 
         plugins: [
-            new webpack.optimize.CommonsChunkPlugin({ name: "globals", filename: "globals.js" }),
-            extractSass
+            extractSass,
+            new webpack.optimize.CommonsChunkPlugin({
+                name: "globals",
+                filename: jsFilename
+            }),
+            new HtmlWebpackPlugin({
+                filename: '../index.html',
+                template: 'src/index.template.html'
+            })
         ]
     }
 ]
