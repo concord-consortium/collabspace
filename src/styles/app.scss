@@ -3,6 +3,10 @@ html, body {
   padding: 0;
 }
 
+body {
+  font-family: sans-serif;
+}
+
 #app {
   position: fixed;
   top: 0;
@@ -14,5 +18,12 @@ html, body {
 .hello {
   margin: 2em;
   font-size: 2em;
-  font-family: sans-serif;
+}
+
+.firebase-info {
+  margin: 2em;
+
+  .firebase-error {
+    color: #f00;
+  }
 }

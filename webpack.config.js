@@ -7,7 +7,8 @@ const cssFilename = isDev ? "styles.css" : "styles.[contenthash].css";
 const jsFilename = isDev ? "[name].js" : "[name].[chunkhash].js";
 
 const extractSass = new ExtractTextPlugin({
-   filename: cssFilename
+   filename: cssFilename,
+   disable: isDev
 });
 
 module.exports = [
@@ -15,7 +16,7 @@ module.exports = [
         entry: {
             app: "./src/app.tsx",
             styles: "./src/styles/app.scss",
-            globals: ["react", "react-dom"]
+            globals: ["react", "react-dom", "firebase"]
         },
 
         output: {
