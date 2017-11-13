@@ -51,7 +51,7 @@ export class App extends React.Component<AppProps, AppState> {
 
   render() {
     return <div>
-      <div className="hello">Hello, world!</div>
+      <div className="hello">Hello, world from Travis!</div>
       <div className="firebase-info">
         {this.renderFirebaseInfo()}
       </div>
