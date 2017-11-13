@@ -6,7 +6,7 @@ install:
 - travis_retry pip install awscli --upgrade --user
 - travis_retry yarn
 before_script: npm run build
-script: deploy/s3_deploy.sh
+script: cd deploy && ./s3_deploy.sh
 cache:
   bundler: true
   yarn: true
