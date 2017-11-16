@@ -12,7 +12,7 @@ export interface AppComponentState {
   documentError: string|null
   documentId: string|null
   documentRef: firebase.database.Reference|null
-  document: Document|null
+  documentExists: boolean
 }
 
 export interface AppParams {
@@ -26,14 +26,15 @@ export interface WindowProps {
   height: number
   url: string
   title: string
+  state: "normal" | "minimized" | "maximized"
 }
 
 export interface WindowPropsMap {
-  [key: string]: WindowProps
+  [key: string]: WindowProps|null
 }
 
 export interface WindowDataMap {
-  [key: string]: any
+  [key: string]: any|null
 }
 
 export interface DocumentData {
@@ -69,6 +70,7 @@ export function getDocumentRef(fullDocumentId:string) {
 
 export class AppComponent extends React.Component<AppComponentProps, AppComponentState> {
   startingTitle: string
+  documentInfoRef: firebase.database.Reference|null
 
   constructor (props:AppComponentProps) {
     super(props)
@@ -78,11 +80,12 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       authUser: null,
       documentId: null,
       documentRef: null,
-      document: null
+      documentExists: false
     }
     this.startingTitle = document.title
+    this.documentInfoRef = null
 
-    this.handleDocumentChange = this.handleDocumentChange.bind(this)
+    this.handleDocumentInfoChange = this.handleDocumentInfoChange.bind(this)
   }
 
   componentWillMount() {
@@ -112,23 +115,30 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     })
   }
 
-  componentWillUpdate(nextProps:AppComponentProps, nextState:AppComponentState) {
-    const suffix = nextState.document ? `: ${nextState.document.info.name}` : ""
+  setTitle(info:DocumentInfo|null) {
+    const suffix = info ? `: ${info.name}` : ""
     document.title = this.startingTitle + suffix
   }
 
   parseHash() {
     const params:AppParams = queryString.parse(window.location.hash)
-    this.setState({documentId: params.document || null, document: null, documentError: null})
+    this.setState({
+      documentId: params.document || null,
+      documentRef: null,
+      documentExists: false,
+      documentError: null
+    })
 
-    if (this.state.documentRef) {
-      this.state.documentRef.off("value", this.handleDocumentChange)
+    if (this.documentInfoRef) {
+      this.documentInfoRef.off("value", this.handleDocumentInfoChange)
     }
+
     if (params.document) {
       const documentRef = getDocumentRef(params.document)
       if (documentRef) {
-        documentRef.on("value", this.handleDocumentChange)
         this.setState({documentRef})
+        this.documentInfoRef = documentRef.child("info")
+        this.documentInfoRef.on("value", this.handleDocumentInfoChange)
       }
       else {
         this.setState({documentError: "Invalid collaborative space document in url!"})
@@ -136,12 +146,14 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     }
   }
 
-  handleDocumentChange(snapshot:firebase.database.DataSnapshot|null) {
-    const document = (snapshot && snapshot.val()) || null
-    this.setState({document})
-    if (!document) {
+  handleDocumentInfoChange(snapshot:firebase.database.DataSnapshot|null) {
+    const documentInfo = (snapshot && snapshot.val()) || null
+    const documentExists = !!documentInfo && documentInfo.version
+    this.setState({documentExists})
+    if (!documentExists) {
       this.setState({documentError: "Unable to load collaborative space document!"})
     }
+    this.setTitle(documentInfo)
   }
 
   renderFatalError(message:string) {
@@ -160,12 +172,10 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
 
     if (this.state.authUser) {
       if (this.state.documentId) {
-        if (this.state.documentRef && this.state.document) {
+        if (this.state.documentRef && this.state.documentExists) {
           return <WorkspaceComponent
                     authUser={this.state.authUser}
-                    document={this.state.document}
                     documentRef={this.state.documentRef}
-                    readonly={this.state.authUser.uid !== this.state.document.info.ownerId}
                  />
         }
         return this.renderProgress("Loading collaborative space document...")
