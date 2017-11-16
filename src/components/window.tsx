@@ -79,6 +79,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleDragWindow(e:React.MouseEvent<HTMLDivElement>) {
+    if (!this.props.top) {
+      this.props.moveWindowToTop(this.props.id)
+    }
     this.props.registerDragWindow(this.props.id, DragType.Position)
   }
 
@@ -113,11 +116,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
 
     return (
       <div className="window" ref="window" key={id} style={windowStyle}>
-        <div
-          className={titlebarClass}
-          onMouseDown={(e) => top ? this.handleDragWindow(e) : null}
-          onClick={(e) => top ? null : this.handleMoveWindowToTop()}
-        >
+        <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
           <div className="title">{window.title}</div>
         </div>
         <div className="iframe">
