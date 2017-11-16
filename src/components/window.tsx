@@ -66,18 +66,6 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.handleClose = this.handleClose.bind(this)
   }
 
-  refs: {
-    window: HTMLDivElement
-  }
-
-  getDragContainer() {
-    let container = this.refs.window.parentElement
-    while (container && (container.className.indexOf("non-minimized") !== -1 )) {
-      container = container.parentElement
-    }
-    return container
-  }
-
   handleMoveWindowToTop() {
     this.props.moveWindowToTop(this.props.id)
   }
@@ -127,9 +115,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   renderButtons() {
     return (
       <div className="buttons">
-        <span onClick={this.handleMinimize}>-</span>
-        <span onClick={this.handleMaximize}>+</span>
-        <span onClick={this.handleClose}>x</span>
+        <span onClick={this.handleMinimize} title="Minimize Window">-</span>
+        <span onClick={this.handleMaximize} title="Maximize Window">+</span>
+        <span onClick={this.handleClose} title="Close Window">x</span>
       </div>
     )
   }
