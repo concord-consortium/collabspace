@@ -39,6 +39,7 @@ export interface WindowComponentProps {
   window: WindowProps
   top: boolean
   moveWindowToTop: (key:string) => void
+  closeWindow: (key:string) => void
   registerDragWindow: (windowId:string|null, type:DragType) => void
   propsRef: firebase.database.Reference
 }
@@ -111,6 +112,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleClose() {
+    if (confirm("Are you sure you want to close the window?")) {
+      this.props.closeWindow(this.props.id)
+    }
   }
 
   renderIframeOverlay() {

@@ -47,18 +47,20 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
     this.dragInfo = {windowId: null, windowRef: null, type: DragType.None}
 
+    this.moveWindowToTop = this.moveWindowToTop.bind(this)
+    this.closeWindow = this.closeWindow.bind(this)
+    this.restoreMinimizedWindow = this.restoreMinimizedWindow.bind(this)
+
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
     this.handleAddDrawingButton = this.handleAddDrawingButton.bind(this)
     this.handleInfoChange = this.handleInfoChange.bind(this)
     this.handlePropsChange = this.handlePropsChange.bind(this)
     this.handleOrderChange = this.handleOrderChange.bind(this)
-    this.moveWindowToTop = this.moveWindowToTop.bind(this)
     this.registerDragWindow = this.registerDragWindow.bind(this)
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
     this.handleWindowMouseUp = this.handleWindowMouseUp.bind(this)
-    this.restoreMinimizedWindow = this.restoreMinimizedWindow.bind(this)
   }
 
   componentWillMount() {
@@ -195,6 +197,18 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     })
   }
 
+  closeWindow(key:string) {
+    this.orderRef.once("value", (snapshot) => {
+      const order:string[] = snapshot.val() || []
+      const index = order.indexOf(key)
+      if (index !== -1) {
+        order.splice(index, 1)
+      }
+      this.orderRef.set(order)
+    })
+    this.propsRef.child(key).set(null)
+  }
+
   restoreMinimizedWindow(id:string) {
     const win = this.state.windowProps[id]
     if (win) {
@@ -283,6 +297,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             window={window}
             top={top}
             moveWindowToTop={this.moveWindowToTop}
+            closeWindow={this.closeWindow}
             registerDragWindow={this.registerDragWindow}
             propsRef={this.propsRef}
           />)
