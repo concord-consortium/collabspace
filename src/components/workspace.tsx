@@ -15,7 +15,7 @@ export interface WorkspaceComponentState {
   windowOrder: string[]
 }
 
-export enum DragType { GrowRight, GrowDown, GrowBoth, Position, None }
+export enum DragType { GrowLeft, GrowRight, GrowUp, GrowDown, GrowDownRight, GrowDownLeft, Position, None }
 export interface DragInfo {
   windowId: string|null
   windowRef: firebase.database.Reference|null
@@ -141,17 +141,30 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
           case DragType.Position:
             win.top = Math.max(0, dragInfo.start.top + dy)
             win.left = Math.max(0, dragInfo.start.left + dx)
-            break;
+            break
+          case DragType.GrowLeft:
+            win.left = Math.max(0, dragInfo.start.left + dx)
+            win.width = dragInfo.start.width - dx
+            break
+          case DragType.GrowUp:
+            win.top = Math.max(0, dragInfo.start.top + dy)
+            win.height = dragInfo.start.height - dy
+            break
           case DragType.GrowRight:
             win.width = dragInfo.start.width + dx
-            break;
+            break
           case DragType.GrowDown:
             win.height = dragInfo.start.height + dy
-            break;
-          case DragType.GrowBoth:
+            break
+          case DragType.GrowDownLeft:
+            win.left = Math.max(0, dragInfo.start.left + dx)
+            win.width = dragInfo.start.width - dx
+            win.height = dragInfo.start.height + dy
+            break
+          case DragType.GrowDownRight:
             win.width = dragInfo.start.width + dx
             win.height = dragInfo.start.height + dy
-            break;
+            break
         }
         dragInfo.windowRef.set(win)
       }

@@ -55,12 +55,19 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
 
     this.handleMoveWindowToTop = this.handleMoveWindowToTop.bind(this)
     this.handleDragWindow = this.handleDragWindow.bind(this)
+    this.handleDragLeft = this.handleDragLeft.bind(this)
     this.handleDragRight = this.handleDragRight.bind(this)
+    this.handleDragTop = this.handleDragTop.bind(this)
     this.handleDragBottom = this.handleDragBottom.bind(this)
-    this.handleDragBoth = this.handleDragBoth.bind(this)
+    this.handleDragBottomLeft = this.handleDragBottomLeft.bind(this)
+    this.handleDragBottomRight = this.handleDragBottomRight.bind(this)
     this.handleMinimize = this.handleMinimize.bind(this)
     this.handleMaximize = this.handleMaximize.bind(this)
     this.handleClose = this.handleClose.bind(this)
+  }
+
+  refs: {
+    buttons: HTMLDivElement
   }
 
   handleMoveWindowToTop() {
@@ -68,29 +75,48 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleDragWindow(e:React.MouseEvent<HTMLDivElement>) {
+
+    // ignore button clicks (this down handler gets called before the button click handler)
+    const parentElement = (e.target as any).parentElement
+    if (parentElement && (parentElement === this.refs.buttons)) {
+      return
+    }
+
     if (!this.props.top) {
       this.props.moveWindowToTop(this.props.id)
     }
     this.props.registerDragWindow(this.props.id, DragType.Position)
   }
 
+  handleDragLeft(e:React.MouseEvent<HTMLDivElement>) {
+    this.props.registerDragWindow(this.props.id, DragType.GrowLeft)
+  }
+
   handleDragRight(e:React.MouseEvent<HTMLDivElement>) {
     this.props.registerDragWindow(this.props.id, DragType.GrowRight)
+  }
+
+  handleDragTop(e:React.MouseEvent<HTMLDivElement>) {
+    this.props.registerDragWindow(this.props.id, DragType.GrowUp)
   }
 
   handleDragBottom(e:React.MouseEvent<HTMLDivElement>) {
     this.props.registerDragWindow(this.props.id, DragType.GrowDown)
   }
 
-  handleDragBoth(e:React.MouseEvent<HTMLDivElement>) {
-    this.props.registerDragWindow(this.props.id, DragType.GrowBoth)
+  handleDragBottomLeft(e:React.MouseEvent<HTMLDivElement>) {
+    this.props.registerDragWindow(this.props.id, DragType.GrowDownLeft)
   }
 
-  handleMinimize() {
+  handleDragBottomRight(e:React.MouseEvent<HTMLDivElement>) {
+    this.props.registerDragWindow(this.props.id, DragType.GrowDownRight)
+  }
+
+  handleMinimize(e:React.MouseEvent<HTMLSpanElement>) {
     this.props.setWindowState(this.props.id, "minimized")
   }
 
-  handleMaximize() {
+  handleMaximize(e:React.MouseEvent<HTMLSpanElement>) {
     const state = this.props.window.state === "maximized" ? "normal" : "maximized"
     this.props.setWindowState(this.props.id, state)
   }
@@ -110,7 +136,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
 
   renderButtons() {
     return (
-      <div className="buttons">
+      <div className="buttons" ref="buttons">
         <span onClick={this.handleMinimize} title="Minimize Window">-</span>
         <span onClick={this.handleMaximize} title="Maximize Window">+</span>
         <span onClick={this.handleClose} title="Close Window">x</span>
@@ -143,9 +169,12 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
           <WindowIframeComponent key={id} src={window.url} />
         </div>
         {this.renderIframeOverlay()}
+        <div className="left-drag" onMouseDown={this.handleDragLeft} />
         <div className="right-drag" onMouseDown={this.handleDragRight} />
+        <div className="top-drag" onMouseDown={this.handleDragTop} />
         <div className="bottom-drag" onMouseDown={this.handleDragBottom} />
-        <div className="both-drag" onMouseDown={this.handleDragBoth} />
+        <div className="bottom-left-drag" onMouseDown={this.handleDragBottomLeft} />
+        <div className="bottom-right-drag" onMouseDown={this.handleDragBottomRight} />
       </div>
     )
   }

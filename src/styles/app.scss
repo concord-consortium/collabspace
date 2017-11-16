@@ -214,6 +214,15 @@ body {
           cursor: pointer;
         }
 
+        .left-drag {
+          position: absolute;
+          top: 0px;
+          left: 0px;
+          bottom: 0px;
+          width: 4px;
+          cursor: ew-resize;
+        }
+
         .right-drag {
           position: absolute;
           top: 0px;
@@ -221,6 +230,15 @@ body {
           bottom: 0px;
           width: 4px;
           cursor: ew-resize;
+        }
+
+        .top-drag {
+          position: absolute;
+          right: 0px;
+          left: 0px;
+          top: 0px;
+          height: 4px;
+          cursor: ns-resize;
         }
 
         .bottom-drag {
@@ -232,13 +250,22 @@ body {
           cursor: ns-resize;
         }
 
-        .both-drag {
+        .bottom-right-drag {
           position: absolute;
           right: 0px;
           width: 10px;
           height: 10px;
           bottom: 0px;
           cursor: se-resize;
+        }
+
+        .bottom-left-drag {
+          position: absolute;
+          left: 0px;
+          width: 10px;
+          height: 10px;
+          bottom: 0px;
+          cursor: sw-resize;
         }
       }
 
