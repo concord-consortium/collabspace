@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as firebase from "firebase"
-import { WindowProps, WindowState } from "./app"
+import { WindowProps } from "./app"
 import { DragType } from "./workspace"
 
 export interface WindowIframeComponentProps {
@@ -41,7 +41,7 @@ export interface WindowComponentProps {
   zIndex: number
   moveWindowToTop: (key:string) => void
   closeWindow: (key:string) => void
-  setWindowState: (key:string, state:WindowState) => void
+  setWindowState: (key:string, minimized: boolean, maximized: boolean) => void
   registerDragWindow: (windowId:string|null, type:DragType) => void
 }
 export interface WindowComponentState {
@@ -75,6 +75,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleDragWindow(e:React.MouseEvent<HTMLDivElement>) {
+    if (this.props.window.maximized) {
+      return
+    }
 
     // ignore button clicks (this down handler gets called before the button click handler)
     const parentElement = (e.target as any).parentElement
@@ -113,12 +116,11 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleMinimize(e:React.MouseEvent<HTMLSpanElement>) {
-    this.props.setWindowState(this.props.id, "minimized")
+    this.props.setWindowState(this.props.id, true, !!this.props.window.maximized)
   }
 
   handleMaximize(e:React.MouseEvent<HTMLSpanElement>) {
-    const state = this.props.window.state === "maximized" ? "normal" : "maximized"
-    this.props.setWindowState(this.props.id, state)
+    this.props.setWindowState(this.props.id, false, !this.props.window.maximized)
   }
 
   handleClose(e:React.MouseEvent<HTMLSpanElement>) {
@@ -146,17 +148,14 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
 
   render() {
     const {window, top, id} = this.props
-    const maximized = window.state === "maximized"
+    const {maximized, minimized} = window
     const titlebarClass = `titlebar${top ? " top" : ""}`
-    let windowStyle:any = {top: window.top, width: window.width, left: window.left, height: window.height, zIndex: this.props.zIndex}
+    let windowStyle:any = maximized
+      ? {top: 0, right: 0, bottom: 0, left: 0, zIndex: this.props.zIndex}
+      : {top: window.top, width: window.width, left: window.left, height: window.height, zIndex: this.props.zIndex}
 
-    switch (window.state) {
-      case "maximized":
-        windowStyle = {top: 0, right: 0, bottom: 0, left: 0, zIndex: this.props.zIndex}
-        break
-      case "minimized":
-        windowStyle.display = "none"
-        break
+    if (minimized) {
+      windowStyle.display = "none"
     }
 
     return (
@@ -169,12 +168,12 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
           <WindowIframeComponent key={id} src={window.url} />
         </div>
         {this.renderIframeOverlay()}
-        <div className="left-drag" onMouseDown={this.handleDragLeft} />
-        <div className="right-drag" onMouseDown={this.handleDragRight} />
-        <div className="top-drag" onMouseDown={this.handleDragTop} />
-        <div className="bottom-drag" onMouseDown={this.handleDragBottom} />
-        <div className="bottom-left-drag" onMouseDown={this.handleDragBottomLeft} />
-        <div className="bottom-right-drag" onMouseDown={this.handleDragBottomRight} />
+        {!maximized ? <div className="left-drag" onMouseDown={this.handleDragLeft} /> : null}
+        {!maximized ? <div className="right-drag" onMouseDown={this.handleDragRight} /> : null}
+        {!maximized ? <div className="top-drag" onMouseDown={this.handleDragTop} /> : null}
+        {!maximized ? <div className="bottom-drag" onMouseDown={this.handleDragBottom} /> : null}
+        {!maximized ? <div className="bottom-left-drag" onMouseDown={this.handleDragBottomLeft} /> : null}
+        {!maximized ? <div className="bottom-right-drag" onMouseDown={this.handleDragBottomRight} /> : null}
       </div>
     )
   }

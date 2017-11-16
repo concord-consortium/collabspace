@@ -19,8 +19,6 @@ export interface AppParams {
   document: string|null
 }
 
-export type WindowState = "normal" | "minimized" | "maximized"
-
 export interface WindowProps {
   top: number
   left: number
@@ -28,7 +26,10 @@ export interface WindowProps {
   height: number
   url: string
   title: string
-  state: WindowState
+  // two booleans are used instead of a single state so that we remember if the window should
+  // restore to maximized after being minimized
+  minimized: boolean
+  maximized: boolean
 }
 
 export interface WindowPropsMap {

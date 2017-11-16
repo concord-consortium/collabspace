@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as firebase from "firebase"
-import { DocumentInfo, WindowProps, WindowPropsMap, WindowState } from "./app"
+import { DocumentInfo, WindowProps, WindowPropsMap } from "./app"
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
 
@@ -202,7 +202,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       left: randInRange(50, 200),
       width: 400,
       height: 400,
-      state: "normal",
+      minimized: false,
+      maximized: false,
       url,
       title,
     }
@@ -236,17 +237,18 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.propsRef.child(key).set(null)
   }
 
-  setWindowState(key:string, state:WindowState) {
+  setWindowState(key:string, minimized: boolean, maximized: boolean) {
     const win = this.state.windowProps[key]
     if (win) {
-      win.state = state
+      win.maximized = maximized
+      win.minimized = minimized
       this.minimizedOrderRef.once("value", (snapshot) => {
         const minimizedOrder:string[] = snapshot.val() || []
         const index = minimizedOrder.indexOf(key)
-        if ((state !== "minimized") && (index !== -1)) {
+        if (!minimized && (index !== -1)) {
           minimizedOrder.splice(index, 1)
         }
-        else if ((state === "minimized") && (index === -1)) {
+        else if (minimized && (index === -1)) {
           minimizedOrder.push(key)
         }
         this.minimizedOrderRef.set(minimizedOrder)
@@ -258,7 +260,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   restoreMinimizedWindow(id:string) {
     const win = this.state.windowProps[id]
     if (win) {
-      this.setWindowState(id, "normal")
+      this.setWindowState(id, false, win.maximized)
       this.moveWindowToTop(id)
     }
   }
@@ -336,7 +338,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     // search though from the start instead of reversing twice
     windowOrder.forEach((id) => {
       const window = windowProps[id]
-      if (window && (window.state !== "minimized")) {
+      if (window && !window.minimized) {
         topWindowId = id
       }
     })
@@ -368,7 +370,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     const windows:JSX.Element[] = []
     minimizedWindowIds.forEach((id, index) => {
       const window = windowProps[id]
-      if (window && (window.state === "minimized")) {
+      if (window && window.minimized) {
         windows.push(
           <MinimizedWindowComponent
             id={id}
@@ -402,7 +404,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
     allWindowIds.forEach((id) => {
       const win = windowProps[id]
-      hasMinmizedWindows = hasMinmizedWindows || !!(win && (win.state === "minimized"))
+      hasMinmizedWindows = hasMinmizedWindows || !!(win && win.minimized)
     })
 
     const nonMinimizedClassName = `non-minimized${hasMinmizedWindows ? " with-minimized" : ""}`
