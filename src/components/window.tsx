@@ -95,8 +95,8 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.props.setWindowState(this.props.id, state)
   }
 
-  handleClose() {
-    if (confirm("Are you sure you want to close the window?")) {
+  handleClose(e:React.MouseEvent<HTMLSpanElement>) {
+    if (e.ctrlKey || confirm("Are you sure you want to close the window?")) {
       this.props.closeWindow(this.props.id)
     }
   }
