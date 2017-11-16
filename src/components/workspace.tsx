@@ -292,19 +292,31 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     )
   }
 
-  renderNonMinimizedWindows(ids:string[]) {
-    const {windowProps} = this.state
+  renderAllWindows(allWindowIds:string[]) {
+    const {windowProps, windowOrder} = this.state
     const windows:JSX.Element[] = []
-    ids.forEach((id, index) => {
+    let topWindowId:string|null = null
+
+    // search though from the start instead of reversing twice
+    windowOrder.forEach((id) => {
       const window = windowProps[id]
-      const top = index === ids.length - 1
+      if (window && (window.state !== "minimized")) {
+        topWindowId = id
+      }
+    })
+
+    // note: all windows are rendered with display: none for minimized to ensure React doesn't try to reload the iframes
+    allWindowIds.forEach((id, index) => {
+      const window = windowProps[id]
+      const zIndex = windowOrder.indexOf(id)
       if (window) {
         windows.push(
           <WindowComponent
             key={id}
             id={id}
             window={window}
-            top={top}
+            top={id === topWindowId}
+            zIndex={zIndex}
             moveWindowToTop={this.moveWindowToTop}
             closeWindow={this.closeWindow}
             registerDragWindow={this.registerDragWindow}
@@ -315,15 +327,12 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     return windows
   }
 
-  renderMinimizedWindows(ids:string[]) {
-    if (ids.length === 0) {
-      return null
-    }
+  renderMinimizedWindows(allWindowIds:string[]) {
     const {windowProps} = this.state
     const windows:JSX.Element[] = []
-    ids.forEach((id, index) => {
+    allWindowIds.forEach((id, index) => {
       const window = windowProps[id]
-      if (window) {
+      if (window && (window.state === "minimized")) {
         windows.push(
           <MinimizedWindowComponent
             id={id}
@@ -339,23 +348,16 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderWindowArea() {
-    const {windowOrder, windowProps} = this.state
-    const minimizedWindowIds:string[] = []
-    const nonMinimizedWindowIds:string[] = []
+    const {windowProps} = this.state
+    const allWindowIds = Object.keys(windowProps)
+    let hasMinmizedWindows = false
 
-    windowOrder.forEach((id) => {
+    allWindowIds.forEach((id) => {
       const win = windowProps[id]
-      if (win) {
-        if (win.state === "minimized") {
-          minimizedWindowIds.push(id)
-        }
-        else {
-          nonMinimizedWindowIds.push(id)
-        }
-      }
+      hasMinmizedWindows = hasMinmizedWindows || !!(win && (win.state === "minimized"))
     })
 
-    const nonMinimizedClassName = `non-minimized${minimizedWindowIds.length > 0 ? " with-minimized" : ""}`
+    const nonMinimizedClassName = `non-minimized${hasMinmizedWindows ? " with-minimized" : ""}`
 
     return (
       <div className="window-area">
@@ -366,9 +368,9 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
               props: this.state.windowProps
             }, null, 2)}
           </div>
-          {this.renderNonMinimizedWindows(nonMinimizedWindowIds)}
+          {this.renderAllWindows(allWindowIds)}
         </div>
-        {this.renderMinimizedWindows(minimizedWindowIds)}
+        {hasMinmizedWindows ? this.renderMinimizedWindows(allWindowIds) : null}
       </div>
     )
   }

@@ -38,6 +38,7 @@ export interface WindowComponentProps {
   id: string
   window: WindowProps
   top: boolean
+  zIndex: number
   moveWindowToTop: (key:string) => void
   closeWindow: (key:string) => void
   setWindowState: (key:string, state:WindowState) => void
@@ -120,8 +121,17 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   render() {
     const {window, top, id} = this.props
     const maximized = window.state === "maximized"
-    const windowStyle = maximized ? {top: 0, right: 0, bottom: 0, left: 0} : {top: window.top, width: window.width, left: window.left, height: window.height}
     const titlebarClass = `titlebar${top ? " top" : ""}`
+    let windowStyle:any = {top: window.top, width: window.width, left: window.left, height: window.height, zIndex: this.props.zIndex}
+
+    switch (window.state) {
+      case "maximized":
+        windowStyle = {top: 0, right: 0, bottom: 0, left: 0, zIndex: this.props.zIndex}
+        break
+      case "minimized":
+        windowStyle.display = "none"
+        break
+    }
 
     return (
       <div className="window" ref="window" key={id} style={windowStyle}>
