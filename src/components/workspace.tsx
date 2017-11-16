@@ -13,6 +13,7 @@ export interface WorkspaceComponentState {
   documentInfo: DocumentInfo|null
   windowProps: WindowPropsMap
   windowOrder: string[]
+  minimizedWindowOrder: string[]
 }
 
 export enum DragType { GrowLeft, GrowRight, GrowUp, GrowDown, GrowDownRight, GrowDownLeft, Position, None }
@@ -34,6 +35,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   infoRef: firebase.database.Reference
   propsRef: firebase.database.Reference
   orderRef: firebase.database.Reference
+  minimizedOrderRef: firebase.database.Reference
   dragInfo: DragInfo
 
   constructor (props:WorkspaceComponentProps) {
@@ -42,7 +44,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       readonly: false,
       documentInfo: null,
       windowProps: {},
-      windowOrder: []
+      windowOrder: [],
+      minimizedWindowOrder: []
     }
 
     this.dragInfo = {windowId: null, windowRef: null, type: DragType.None}
@@ -58,6 +61,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleInfoChange = this.handleInfoChange.bind(this)
     this.handlePropsChange = this.handlePropsChange.bind(this)
     this.handleOrderChange = this.handleOrderChange.bind(this)
+    this.handleMinimizedOrderChange = this.handleMinimizedOrderChange.bind(this)
     this.registerDragWindow = this.registerDragWindow.bind(this)
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
@@ -68,10 +72,12 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.infoRef = this.props.documentRef.child("info")
     this.propsRef = this.props.documentRef.child("data/windows/props")
     this.orderRef = this.props.documentRef.child("data/windows/order")
+    this.minimizedOrderRef = this.props.documentRef.child("data/windows/minimizedOrder")
 
     this.infoRef.on("value", this.handleInfoChange)
     this.propsRef.on("value", this.handlePropsChange)
     this.orderRef.on("value", this.handleOrderChange)
+    this.minimizedOrderRef.on("value", this.handleMinimizedOrderChange)
 
     window.addEventListener("mousedown", this.handleWindowMouseDown)
     window.addEventListener("mousemove", this.handleWindowMouseMove, true)
@@ -82,6 +88,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.infoRef.off("value", this.handleInfoChange)
     this.propsRef.off("value", this.handlePropsChange)
     this.orderRef.off("value", this.handleOrderChange)
+    this.minimizedOrderRef.off("value", this.handleMinimizedOrderChange)
 
     window.removeEventListener("mousedown", this.handleWindowMouseDown)
     window.removeEventListener("mousemove", this.handleWindowMouseMove, true)
@@ -105,6 +112,12 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   handleOrderChange(snapshot:firebase.database.DataSnapshot|null) {
     if (snapshot) {
       this.setState({windowOrder: snapshot.val() || []})
+    }
+  }
+
+  handleMinimizedOrderChange(snapshot:firebase.database.DataSnapshot|null) {
+    if (snapshot) {
+      this.setState({minimizedWindowOrder: snapshot.val() || []})
     }
   }
 
@@ -227,6 +240,17 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     const win = this.state.windowProps[key]
     if (win) {
       win.state = state
+      this.minimizedOrderRef.once("value", (snapshot) => {
+        const minimizedOrder:string[] = snapshot.val() || []
+        const index = minimizedOrder.indexOf(key)
+        if ((state !== "minimized") && (index !== -1)) {
+          minimizedOrder.splice(index, 1)
+        }
+        else if ((state === "minimized") && (index === -1)) {
+          minimizedOrder.push(key)
+        }
+        this.minimizedOrderRef.set(minimizedOrder)
+      })
       this.propsRef.child(key).set(win)
     }
   }
@@ -234,8 +258,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   restoreMinimizedWindow(id:string) {
     const win = this.state.windowProps[id]
     if (win) {
-      win.state = "normal"
-      this.propsRef.child(id).set(win)
+      this.setWindowState(id, "normal")
       this.moveWindowToTop(id)
     }
   }
@@ -340,10 +363,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     return windows
   }
 
-  renderMinimizedWindows(allWindowIds:string[]) {
+  renderMinimizedWindows(minimizedWindowIds:string[]) {
     const {windowProps} = this.state
     const windows:JSX.Element[] = []
-    allWindowIds.forEach((id, index) => {
+    minimizedWindowIds.forEach((id, index) => {
       const window = windowProps[id]
       if (window && (window.state === "minimized")) {
         windows.push(
@@ -360,8 +383,20 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     )
   }
 
+  renderDebug() {
+    return (
+      <div className="debug">
+        {JSON.stringify({
+          order: this.state.windowOrder,
+          minimizedOrder: this.state.minimizedWindowOrder,
+          props: this.state.windowProps
+        }, null, 2)}
+      </div>
+    )
+  }
+
   renderWindowArea() {
-    const {windowProps} = this.state
+    const {windowProps, minimizedWindowOrder} = this.state
     const allWindowIds = Object.keys(windowProps)
     let hasMinmizedWindows = false
 
@@ -375,15 +410,9 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     return (
       <div className="window-area">
         <div className={nonMinimizedClassName}>
-          <div className="debug">
-            {JSON.stringify({
-              order: this.state.windowOrder,
-              props: this.state.windowProps
-            }, null, 2)}
-          </div>
           {this.renderAllWindows(allWindowIds)}
         </div>
-        {hasMinmizedWindows ? this.renderMinimizedWindows(allWindowIds) : null}
+        {hasMinmizedWindows ? this.renderMinimizedWindows(minimizedWindowOrder) : null}
       </div>
     )
   }

@@ -43,6 +43,7 @@ export interface DocumentData {
   windows: {
     props: WindowPropsMap
     order: string[]
+    minimizedOrder: string[]
     data: WindowDataMap
   }
 }
