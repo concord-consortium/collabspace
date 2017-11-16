@@ -1,6 +1,11 @@
 $header-height: 60px;
 $toolbar-height: 34px;
 $titlebar-height: 20px;
+$minimized-area-height: 100px;
+$minimized-window-box-width: $minimized-area-height - 50;
+$minimized-window-box-height: $minimized-area-height - 50;
+$minimized-titlebar-height: 5px;
+$minimized-iframe-height: $minimized-window-box-height - $minimized-titlebar-height;
 
 html, body {
   margin: 0;
@@ -90,7 +95,58 @@ body {
       right: 0;
       left: 0;
       bottom: 0;
-      overflow: auto;
+
+      .non-minimized {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: auto;
+
+        &.with-minimized {
+          bottom: $minimized-area-height;
+        }
+      }
+
+      .minimized {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: $minimized-area-height;
+        overflow: none;
+        background-color: #f5f5f5;
+        font-size: 12px;
+
+        .minimized-window {
+          display: inline-block;
+          margin: 10px;
+          vertical-align: top;
+
+          .mini-window {
+            height: $minimized-window-box-height;
+            width: $minimized-window-box-width;
+            text-align: center;
+            border: 1px solid #313131;
+
+            .titlebar {
+              height: $minimized-titlebar-height;
+              background-color: #3E90AC;
+            }
+            .iframe {
+              height: $minimized-iframe-height;
+              background-color: #fff;
+            }
+          }
+
+          .title {
+            text-align: center;
+            max-width: $minimized-window-box-width;
+            margin-top: 5px;
+          }
+        }
+      }
 
       .window {
         position: absolute;
@@ -105,14 +161,25 @@ body {
           height: $titlebar-height;
           background-color: #ddd;
           color: #000;
+          font-size: 12px;
 
           .title {
-            font-size: 12px;
+            float: left;
             padding: 2px 6px;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
             cursor: pointer;
+          }
+
+          .buttons {
+            float: right;
+            padding: 2px 6px;
+
+            span {
+              margin-left: 10px;
+              cursor: pointer;
+            }
           }
 
           &.top {

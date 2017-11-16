@@ -2,6 +2,7 @@ import * as React from "react"
 import * as firebase from "firebase"
 import { DocumentInfo, WindowProps, WindowPropsMap } from "./app"
 import { WindowComponent } from "./window"
+import { MinimizedWindowComponent } from "./minimized-window"
 
 export interface WorkspaceComponentProps {
   authUser: firebase.User
@@ -57,6 +58,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
     this.handleWindowMouseUp = this.handleWindowMouseUp.bind(this)
+    this.restoreMinimizedWindow = this.restoreMinimizedWindow.bind(this)
   }
 
   componentWillMount() {
@@ -193,6 +195,15 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     })
   }
 
+  restoreMinimizedWindow(id:string) {
+    const win = this.state.windowProps[id]
+    if (win) {
+      win.state = "normal"
+      this.propsRef.child(id).set(win)
+      this.moveWindowToTop(id)
+    }
+  }
+
   handleDragOver(e:React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
   }
@@ -281,7 +292,26 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderMinimizedWindows(ids:string[]) {
-    return null
+    if (ids.length === 0) {
+      return null
+    }
+    const {windowProps} = this.state
+    const windows:JSX.Element[] = []
+    ids.forEach((id, index) => {
+      const window = windowProps[id]
+      if (window) {
+        windows.push(
+          <MinimizedWindowComponent
+            id={id}
+            key={id}
+            title={window.title}
+            restoreMinimizedWindow={this.restoreMinimizedWindow}
+          />)
+      }
+    })
+    return (
+      <div className="minimized">{windows}</div>
+    )
   }
 
   renderWindowArea() {

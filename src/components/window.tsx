@@ -60,6 +60,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.handleDragRight = this.handleDragRight.bind(this)
     this.handleDragBottom = this.handleDragBottom.bind(this)
     this.handleDragBoth = this.handleDragBoth.bind(this)
+    this.handleMinimize = this.handleMinimize.bind(this)
+    this.handleMaximize = this.handleMaximize.bind(this)
+    this.handleClose = this.handleClose.bind(this)
   }
 
   refs: {
@@ -97,6 +100,19 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.props.registerDragWindow(this.props.id, DragType.GrowBoth)
   }
 
+  handleMinimize() {
+    this.props.window.state = "minimized"
+    this.windowRef.set(this.props.window)
+  }
+
+  handleMaximize() {
+    this.props.window.state = this.props.window.state === "maximized" ? "normal" : "maximized"
+    this.windowRef.set(this.props.window)
+  }
+
+  handleClose() {
+  }
+
   renderIframeOverlay() {
     if (this.props.top) {
       return null
@@ -104,20 +120,27 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     return <div className="iframe-overlay" onClick={this.handleMoveWindowToTop}></div>
   }
 
+  renderButtons() {
+    return (
+      <div className="buttons">
+        <span onClick={this.handleMinimize}>-</span>
+        <span onClick={this.handleMaximize}>+</span>
+        <span onClick={this.handleClose}>x</span>
+      </div>
+    )
+  }
+
   render() {
     const {window, top, id} = this.props
-    const windowStyle = {
-      top: window.top,
-      width: window.width,
-      left: window.left,
-      height: window.height
-    }
+    const maximized = window.state === "maximized"
+    const windowStyle = maximized ? {top: 0, right: 0, bottom: 0, left: 0} : {top: window.top, width: window.width, left: window.left, height: window.height}
     const titlebarClass = `titlebar${top ? " top" : ""}`
 
     return (
       <div className="window" ref="window" key={id} style={windowStyle}>
         <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
           <div className="title">{window.title}</div>
+          {this.renderButtons()}
         </div>
         <div className="iframe">
           <WindowIframeComponent key={id} src={window.url} />
