@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as firebase from "firebase"
-import { WindowProps } from "./app"
+import { WindowProps, WindowState } from "./app"
 import { DragType } from "./workspace"
 
 export interface WindowIframeComponentProps {
@@ -40,21 +40,17 @@ export interface WindowComponentProps {
   top: boolean
   moveWindowToTop: (key:string) => void
   closeWindow: (key:string) => void
+  setWindowState: (key:string, state:WindowState) => void
   registerDragWindow: (windowId:string|null, type:DragType) => void
-  propsRef: firebase.database.Reference
 }
 export interface WindowComponentState {
 }
 
 export class WindowComponent extends React.Component<WindowComponentProps, WindowComponentState> {
-  windowRef: firebase.database.Reference
-
   constructor (props:WindowComponentProps) {
     super(props)
     this.state = {
     }
-
-    this.windowRef = this.props.propsRef.child(this.props.id)
 
     this.handleMoveWindowToTop = this.handleMoveWindowToTop.bind(this)
     this.handleDragWindow = this.handleDragWindow.bind(this)
@@ -90,13 +86,12 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleMinimize() {
-    this.props.window.state = "minimized"
-    this.windowRef.set(this.props.window)
+    this.props.setWindowState(this.props.id, "minimized")
   }
 
   handleMaximize() {
-    this.props.window.state = this.props.window.state === "maximized" ? "normal" : "maximized"
-    this.windowRef.set(this.props.window)
+    const state = this.props.window.state === "maximized" ? "normal" : "maximized"
+    this.props.setWindowState(this.props.id, state)
   }
 
   handleClose() {

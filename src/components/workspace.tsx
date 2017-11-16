@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as firebase from "firebase"
-import { DocumentInfo, WindowProps, WindowPropsMap } from "./app"
+import { DocumentInfo, WindowProps, WindowPropsMap, WindowState } from "./app"
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
 
@@ -50,6 +50,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.moveWindowToTop = this.moveWindowToTop.bind(this)
     this.closeWindow = this.closeWindow.bind(this)
     this.restoreMinimizedWindow = this.restoreMinimizedWindow.bind(this)
+    this.setWindowState = this.setWindowState.bind(this)
 
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
@@ -209,6 +210,14 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.propsRef.child(key).set(null)
   }
 
+  setWindowState(key:string, state:WindowState) {
+    const win = this.state.windowProps[key]
+    if (win) {
+      win.state = state
+      this.propsRef.child(key).set(win)
+    }
+  }
+
   restoreMinimizedWindow(id:string) {
     const win = this.state.windowProps[id]
     if (win) {
@@ -299,7 +308,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             moveWindowToTop={this.moveWindowToTop}
             closeWindow={this.closeWindow}
             registerDragWindow={this.registerDragWindow}
-            propsRef={this.propsRef}
+            setWindowState={this.setWindowState}
           />)
       }
     })
