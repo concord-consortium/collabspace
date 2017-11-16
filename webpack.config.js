@@ -3,7 +3,7 @@ const ExtractTextPlugin = require("extract-text-webpack-plugin");
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const isDev = process.env.NODE_ENV === "development";
-const cssFilename = isDev ? "styles.css" : "styles.[contenthash].css";
+const cssFilename = isDev ? "[name].css" : "[name].[contenthash].css";
 const jsFilename = isDev ? "[name].js" : "[name].[chunkhash].js";
 
 const extractSass = new ExtractTextPlugin({
@@ -64,5 +64,57 @@ module.exports = [
                 template: 'src/index.template.html'
             })
         ]
+    },
+    {
+        entry: {
+            "drawing-styles": "./src/styles/drawing.scss",
+            "drawing-globals": ["firebase"]
+        },
+
+        output: {
+            filename: jsFilename,
+            path: __dirname + "/dist/assets"
+        },
+
+        // Enable sourcemaps for debugging webpack's output.
+        devtool: isDev ? "source-map" : "",
+
+        resolve: {
+            // Add '.ts' and '.tsx' as resolvable extensions.
+            extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"]
+        },
+
+        module: {
+            rules: [
+                // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
+                { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
+
+                // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
+                { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+
+                {
+                    test: /\.scss$/,
+                    use: extractSass.extract({
+                        use: [
+                            {loader: "css-loader", options: { sourceMap: isDev }},
+                            {loader: "sass-loader", options: { sourceMap: isDev }}
+                        ],
+                        fallback: 'style-loader'
+                    })
+                }
+            ]
+        },
+
+        plugins: [
+            extractSass,
+            new webpack.optimize.CommonsChunkPlugin({
+                name: "drawing-globals",
+                filename: jsFilename
+            }),
+            new HtmlWebpackPlugin({
+                filename: '../drawing.html',
+                template: 'src/drawing.template.html'
+            })
+        ]
     }
-]
+];
