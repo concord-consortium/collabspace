@@ -52,7 +52,7 @@ export interface DocumentData {
 export interface DocumentInfo {
   version: "1.0.0",
   ownerId: string
-  createdAt: number
+  createdAt: number|Object
   name: string
 }
 
@@ -70,6 +70,10 @@ export function getDocumentRef(fullDocumentId:string) {
     return firebase.database().ref(`instances/${documentId}`)
   }
   return firebase.database().ref(`templates/${ownerId}/${documentId}`)
+}
+
+export function getDocumentListRef(userId:string) {
+  return firebase.database().ref(`templates/${userId}`)
 }
 
 export class AppComponent extends React.Component<AppComponentProps, AppComponentState> {

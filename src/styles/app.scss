@@ -39,6 +39,92 @@ body {
     font-weight: bold;
   }
 
+  .document-crud {
+    .header {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: $header-height;
+      background-color: #3E90AC;
+      color: #fff;
+
+      .logo {
+        float: left;
+        font-size: 24px;
+        margin: 16px 20px;
+       }
+
+      .user-info {
+        float: right;
+        border-left: 1px solid #fff;
+        min-height: $header-height;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .user-name {
+          font-size: 14px;
+        }
+      }
+    }
+
+    .toolbar {
+      position: fixed;
+      top: $header-height;
+      right: 0;
+      left: 0;
+      height: $toolbar-height;
+      background-color: #f5f5f5;
+      border-bottom: 1px solid #313131;
+      white-space: nowrap;
+      overflow: hidden;
+
+      .readonly-message {
+        font-size: 14px;
+        margin: 6px 20px;
+      }
+      .buttons {
+        padding: 5px 20px;
+
+        button {
+          border: 1px solid #313131;
+          padding: 3px 8px;
+          font-size: 14px;
+          margin-right: 10px;
+        }
+      }
+    }
+
+    .list-area {
+      position: fixed;
+      top: $header-height + $toolbar-height;
+      right: 0;
+      left: 0;
+      bottom: 0;
+      padding: 20px;
+      overflow: auto;
+
+      table {
+        width: 100%;
+
+        th, td {
+          text-align: left;
+        }
+        .checkbox {
+          width: 20px;
+        }
+      }
+
+      .empty-message {
+        div {
+          margin: 10px 0;
+        }
+      }
+    }
+  }
+
   .workspace {
     .header {
       position: fixed;
@@ -116,6 +202,7 @@ body {
           border: 1px solid #313131;
           padding: 3px 8px;
           font-size: 14px;
+          margin-right: 10px;
         }
       }
     }
