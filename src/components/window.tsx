@@ -140,7 +140,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     return (
       <div className="buttons" ref="buttons">
         <span onClick={this.handleMinimize} title="Minimize Window">-</span>
-        <span onClick={this.handleMaximize} title="Maximize Window">+</span>
+        <span onClick={this.handleMaximize} title={this.props.window.maximized ? "Unmaximize Window" : "Maximize Window"}>+</span>
         <span onClick={this.handleClose} title="Close Window">x</span>
       </div>
     )
