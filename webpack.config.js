@@ -67,8 +67,8 @@ module.exports = [
     },
     {
         entry: {
-            "drawing-styles": "./src/styles/drawing.scss",
-            "drawing-globals": ["firebase"]
+            "drawing-tool": "./src/drawing-tool.tsx",
+            "drawing-tool-globals": ["firebase"]
         },
 
         output: {
@@ -90,30 +90,19 @@ module.exports = [
                 { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
 
                 // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
-                { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
-
-                {
-                    test: /\.scss$/,
-                    use: extractSass.extract({
-                        use: [
-                            {loader: "css-loader", options: { sourceMap: isDev }},
-                            {loader: "sass-loader", options: { sourceMap: isDev }}
-                        ],
-                        fallback: 'style-loader'
-                    })
-                }
+                { test: /\.tsx?$/, loader: "awesome-typescript-loader" }
             ]
         },
 
         plugins: [
             extractSass,
             new webpack.optimize.CommonsChunkPlugin({
-                name: "drawing-globals",
+                name: "drawing-tool-globals",
                 filename: jsFilename
             }),
             new HtmlWebpackPlugin({
-                filename: '../drawing.html',
-                template: 'src/drawing.template.html'
+                filename: '../drawing-tool.html',
+                template: 'src/drawing-tool.template.html'
             })
         ]
     }

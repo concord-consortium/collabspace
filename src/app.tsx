@@ -7,4 +7,4 @@ const styles = require('./styles/app.scss')
 ReactDOM.render(
     <AppComponent />,
     document.getElementById("app")
-);
+)
