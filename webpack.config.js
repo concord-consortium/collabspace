@@ -68,7 +68,6 @@ module.exports = [
     {
         entry: {
             "drawing-tool": "./src/drawing-tool.tsx",
-            "drawing-tool-styles": "./src/styles/drawing-tool.scss",
             "drawing-tool-globals": ["firebase"]
         },
 
@@ -91,18 +90,7 @@ module.exports = [
                 { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
 
                 // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
-                { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
-
-                {
-                    test: /\.scss$/,
-                    use: extractSass.extract({
-                        use: [
-                            {loader: "css-loader", options: { sourceMap: isDev }},
-                            {loader: "sass-loader", options: { sourceMap: isDev }}
-                        ],
-                        fallback: 'style-loader'
-                    })
-                }
+                { test: /\.tsx?$/, loader: "awesome-typescript-loader" }
             ]
         },
 

@@ -20,6 +20,10 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
     this.resize = this.resize.bind(this)
   }
 
+  refs: {
+    container: HTMLDivElement
+  }
+
   componentDidMount() {
     this.drawingTool = new DrawingTool("#drawing-tool-container", {
       firebaseKey: 'codraw',
@@ -29,10 +33,11 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
       parseSVG: true
     })
     this.resize()
+    window.addEventListener("resize", this.debounceResize, false)
   }
 
   componentWillUnmount() {
-    window.addEventListener("resize", this.debounceResize, false)
+    window.removeEventListener("resize", this.debounceResize, false)
   }
 
   shouldComponentUpdate() {
@@ -40,7 +45,7 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
   }
 
   debounceResize() {
-    if (!this.resizeTimeout ) {
+    if (!this.resizeTimeout) {
       this.resizeTimeout = window.setTimeout(() => {
         this.resizeTimeout = null
         this.resize()
@@ -50,12 +55,17 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
 
   resize() {
     if (this.drawingTool) {
-      this.drawingTool.setDimensions(window.innerWidth - 55, Math.max(window.innerHeight - 10,600))
+      const {container} = this.refs
+      this.drawingTool.setDimensions(container.clientWidth - 65, container.clientHeight)
       this.drawingTool.canvas.renderAll()
     }
   }
 
   render() {
-    return <div id="drawing-tool-container" />
+    return (
+      <div className="drawing-tool-wrapper">
+        <div ref="container" id="drawing-tool-container" />
+      </div>
+    )
   }
 }
