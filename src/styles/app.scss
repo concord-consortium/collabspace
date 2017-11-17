@@ -57,6 +57,23 @@ body {
           font-size: 18px;
           font-weight: bold;
           margin-bottom: 4px;
+
+          .static {
+            display: inline-block;
+            margin-top: 2px;
+            cursor: text;
+          }
+
+          input {
+            margin-top: 1px;
+            margin-bottom: -1px;
+            border: 0;
+            background: none;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            width: 400px;
+          }
         }
         .instance-info {
           font-size: 12px;
@@ -190,6 +207,7 @@ body {
             .static {
               display: inline-block;
               margin: 3px 0 0 6px;
+              cursor: text;
             }
 
             input {
@@ -198,6 +216,7 @@ body {
               background: none;
               color: #fff;
               font-size: 12px;
+              width: 400px;
             }
           }
 

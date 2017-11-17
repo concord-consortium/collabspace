@@ -3,6 +3,7 @@ import * as firebase from "firebase"
 import { DocumentInfo, WindowProps, WindowPropsMap } from "./app"
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
+import { InlineEditorComponent } from "./inline-editor"
 
 export interface WorkspaceComponentProps {
   authUser: firebase.User
@@ -55,6 +56,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.restoreMinimizedWindow = this.restoreMinimizedWindow.bind(this)
     this.setWindowState = this.setWindowState.bind(this)
     this.changeWindowTitle = this.changeWindowTitle.bind(this)
+    this.changeDocumentName = this.changeDocumentName.bind(this)
 
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
@@ -274,6 +276,13 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     }
   }
 
+  changeDocumentName(newName: string) {
+    if (this.state.documentInfo) {
+      this.state.documentInfo.name = newName
+      this.infoRef.set(this.state.documentInfo)
+    }
+  }
+
   handleDragOver(e:React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
   }
@@ -297,7 +306,9 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     }
     return (
       <div className="document-info">
-        <div className="document-name">{documentInfo.name}</div>
+        <div className="document-name">
+          <InlineEditorComponent text={documentInfo.name} changeText={this.changeDocumentName} />
+        </div>
         <div className="instance-info">Template</div>
       </div>
     )
