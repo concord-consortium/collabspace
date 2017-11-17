@@ -67,8 +67,9 @@ module.exports = [
     },
     {
         entry: {
-            "drawing-styles": "./src/styles/drawing.scss",
-            "drawing-globals": ["firebase"]
+            "drawing-tool": "./src/drawing-tool.tsx",
+            "drawing-tool-styles": "./src/styles/drawing-tool.scss",
+            "drawing-tool-globals": ["firebase"]
         },
 
         output: {
@@ -108,12 +109,12 @@ module.exports = [
         plugins: [
             extractSass,
             new webpack.optimize.CommonsChunkPlugin({
-                name: "drawing-globals",
+                name: "drawing-tool-globals",
                 filename: jsFilename
             }),
             new HtmlWebpackPlugin({
-                filename: '../drawing.html',
-                template: 'src/drawing.template.html'
+                filename: '../drawing-tool.html',
+                template: 'src/drawing-tool.template.html'
             })
         ]
     }

@@ -296,7 +296,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   handleAddDrawingButton() {
-    this.addWindow(`${window.location.origin}/drawing.html`, "Untitled Drawing")
+    this.addWindow(`${window.location.origin}/drawing-tool.html`, "Untitled Drawing")
   }
 
   renderDocumentInfo() {
