@@ -54,6 +54,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.closeWindow = this.closeWindow.bind(this)
     this.restoreMinimizedWindow = this.restoreMinimizedWindow.bind(this)
     this.setWindowState = this.setWindowState.bind(this)
+    this.changeWindowTitle = this.changeWindowTitle.bind(this)
 
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
@@ -265,6 +266,14 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     }
   }
 
+  changeWindowTitle(windowId:string, newTitle:string) {
+    const win = this.state.windowProps[windowId]
+    if (win) {
+      win.title = newTitle
+      this.propsRef.child(windowId).set(win)
+    }
+  }
+
   handleDragOver(e:React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
   }
@@ -359,6 +368,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             closeWindow={this.closeWindow}
             registerDragWindow={this.registerDragWindow}
             setWindowState={this.setWindowState}
+            changeWindowTitle={this.changeWindowTitle}
           />)
       }
     })

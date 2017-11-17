@@ -3,6 +3,87 @@ import * as firebase from "firebase"
 import { WindowProps } from "./app"
 import { DragType } from "./workspace"
 
+export interface TitleComponentProps {
+  title: string
+  changeTitle: (newTitle: string) => void
+}
+
+export interface TitleComponentState {
+  editing: boolean
+  title: string
+}
+
+export class TitleComponent extends React.Component<TitleComponentProps, TitleComponentState> {
+
+  constructor (props:TitleComponentProps) {
+    super(props);
+    this.state = {
+      editing: false,
+      title: this.props.title
+    }
+    this.handleDoubleClick = this.handleDoubleClick.bind(this)
+    this.handleChange = this.handleChange.bind(this)
+    this.handleDoneEditing = this.handleDoneEditing.bind(this)
+    this.handleKeyUp = this.handleKeyUp.bind(this)
+    this.handleMouseDown = this.handleMouseDown.bind(this)
+  }
+
+  refs: {
+    title: HTMLInputElement
+  }
+
+  componentWillUpdate(nextProps:TitleComponentProps) {
+    if (!this.state.editing && (this.state.title !== nextProps.title)) {
+      this.setState({title: nextProps.title})
+    }
+  }
+
+  handleDoubleClick() {
+    this.setState({editing: true}, () => {
+      const {title} = this.refs
+      title.focus()
+      title.selectionStart = title.selectionEnd = title.value.length
+    })
+  }
+
+  handleChange() {
+    this.setState({title: this.refs.title.value})
+  }
+
+  handleDoneEditing() {
+    this.props.changeTitle(this.refs.title.value)
+    this.setState({editing: false})
+  }
+
+  handleKeyUp(e:React.KeyboardEvent<HTMLInputElement>) {
+    if ((e.keyCode == 9) || (e.keyCode == 13)) {
+      this.handleDoneEditing()
+    }
+  }
+
+  handleMouseDown(e:React.MouseEvent<HTMLInputElement>) {
+    e.stopPropagation()
+  }
+
+  render() {
+    const {title} = this.state
+
+    if (!this.state.editing) {
+      return <div className="static" onDoubleClick={this.handleDoubleClick}>{title}</div>
+    }
+
+    return <input
+              type='text'
+              value={title}
+              ref="title"
+              onChange={this.handleChange}
+              onBlur={this.handleDoneEditing}
+              onKeyUp={this.handleKeyUp}
+              onMouseDown={this.handleMouseDown}
+            />
+  }
+}
+
 export interface WindowIframeComponentProps {
   src: string | undefined
 }
@@ -43,14 +124,17 @@ export interface WindowComponentProps {
   closeWindow: (key:string) => void
   setWindowState: (key:string, minimized: boolean, maximized: boolean) => void
   registerDragWindow: (windowId:string|null, type:DragType) => void
+  changeWindowTitle: (windowId:string, newTitle:string) => void
 }
 export interface WindowComponentState {
+  editingTitle: boolean
 }
 
 export class WindowComponent extends React.Component<WindowComponentProps, WindowComponentState> {
   constructor (props:WindowComponentProps) {
     super(props)
     this.state = {
+      editingTitle: false
     }
 
     this.handleMoveWindowToTop = this.handleMoveWindowToTop.bind(this)
@@ -64,6 +148,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.handleMinimize = this.handleMinimize.bind(this)
     this.handleMaximize = this.handleMaximize.bind(this)
     this.handleClose = this.handleClose.bind(this)
+    this.handleChangeTitle = this.handleChangeTitle.bind(this)
   }
 
   refs: {
@@ -129,6 +214,10 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     }
   }
 
+  handleChangeTitle(newTitle: string) {
+    this.props.changeWindowTitle(this.props.id, newTitle)
+  }
+
   renderIframeOverlay() {
     if (this.props.top) {
       return null
@@ -161,7 +250,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     return (
       <div className="window" ref="window" key={id} style={windowStyle}>
         <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
-          <div className="title">{window.title}</div>
+          <div className="title">
+            <TitleComponent title={window.title} changeTitle={this.handleChangeTitle} />
+          </div>
           {this.renderButtons()}
         </div>
         <div className="iframe">
