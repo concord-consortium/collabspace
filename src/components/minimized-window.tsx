@@ -4,6 +4,7 @@ import * as firebase from "firebase"
 export interface MinimizedWindowComponentProps {
   id: string
   title: string
+  readonly: boolean
   restoreMinimizedWindow: (id:string) => void
 }
 export interface MinimizedWindowComponentState {
@@ -15,11 +16,18 @@ export class MinimizedWindowComponent extends React.Component<MinimizedWindowCom
   constructor (props:MinimizedWindowComponentProps) {
     super(props)
     this.state = {}
+    this.handleClick = this.handleClick.bind(this)
+  }
+
+  handleClick() {
+    if (!this.props.readonly) {
+      this.props.restoreMinimizedWindow(this.props.id)
+    }
   }
 
   render() {
     return (
-      <div className="minimized-window" onClick={(e) => this.props.restoreMinimizedWindow(this.props.id)}>
+      <div className="minimized-window" onClick={this.handleClick}>
         <div className="mini-window">
           <div className="titlebar"></div>
           <div className="iframe"></div>

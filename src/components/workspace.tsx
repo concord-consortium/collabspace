@@ -133,7 +133,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   handleWindowMouseDown(e:MouseEvent) {
     const {dragInfo} = this
     const win = dragInfo.windowId ? this.state.windowProps[dragInfo.windowId] : null
-    if (win) {
+    if (win && !this.state.readonly) {
       dragInfo.start = {
         x: e.clientX,
         y: e.clientY,
@@ -147,7 +147,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
   handleWindowMouseMove(e:MouseEvent) {
     const {dragInfo} = this
-    if (dragInfo.type !== DragType.None) {
+    if (!this.state.readonly && (dragInfo.type !== DragType.None)) {
       e.preventDefault()
       e.stopPropagation()
       const win = dragInfo.windowId ? this.state.windowProps[dragInfo.windowId] : null
@@ -188,7 +188,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   handleWindowMouseUp(e:MouseEvent) {
-    if (this.dragInfo.type !== DragType.None) {
+    if (!this.state.readonly && (this.dragInfo.type !== DragType.None)) {
       e.preventDefault()
       e.stopPropagation()
       this.registerDragWindow(null, DragType.None)
@@ -196,53 +196,58 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   addWindow(url: string, title:string) {
-    const randInRange = (min:number, max:number) => {
-      return Math.round(min + (Math.random() * (max - min)))
-    }
-
-    const win:WindowProps = {
-      top: randInRange(50, 200),
-      left: randInRange(50, 200),
-      width: 400,
-      height: 400,
-      minimized: false,
-      maximized: false,
-      url,
-      title,
-    }
-    const ref = this.propsRef.push(win)
-    if (ref.key) {
-      this.moveWindowToTop(ref.key)
+    if (!this.state.readonly) {
+      const randInRange = (min:number, max:number) => {
+        return Math.round(min + (Math.random() * (max - min)))
+      }
+      const win:WindowProps = {
+        top: randInRange(50, 200),
+        left: randInRange(50, 200),
+        width: 400,
+        height: 400,
+        minimized: false,
+        maximized: false,
+        url,
+        title,
+      }
+      const ref = this.propsRef.push(win)
+      if (ref.key) {
+        this.moveWindowToTop(ref.key)
+      }
     }
   }
 
   moveWindowToTop(key:string) {
-    this.orderRef.once("value", (snapshot) => {
-      const order:string[] = snapshot.val() || []
-      const index = order.indexOf(key)
-      if (index !== -1) {
-        order.splice(index, 1)
-      }
-      order.push(key)
-      this.orderRef.set(order)
-    })
+    if (!this.state.readonly) {
+      this.orderRef.once("value", (snapshot) => {
+        const order:string[] = snapshot.val() || []
+        const index = order.indexOf(key)
+        if (index !== -1) {
+          order.splice(index, 1)
+        }
+        order.push(key)
+        this.orderRef.set(order)
+      })
+    }
   }
 
   closeWindow(key:string) {
-    this.orderRef.once("value", (snapshot) => {
-      const order:string[] = snapshot.val() || []
-      const index = order.indexOf(key)
-      if (index !== -1) {
-        order.splice(index, 1)
-      }
-      this.orderRef.set(order)
-    })
-    this.propsRef.child(key).set(null)
+    if (!this.state.readonly) {
+      this.orderRef.once("value", (snapshot) => {
+        const order:string[] = snapshot.val() || []
+        const index = order.indexOf(key)
+        if (index !== -1) {
+          order.splice(index, 1)
+        }
+        this.orderRef.set(order)
+      })
+      this.propsRef.child(key).set(null)
+    }
   }
 
   setWindowState(key:string, minimized: boolean, maximized: boolean) {
     const win = this.state.windowProps[key]
-    if (win) {
+    if (win && !this.state.readonly) {
       win.maximized = maximized
       win.minimized = minimized
       this.minimizedOrderRef.once("value", (snapshot) => {
@@ -300,14 +305,14 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderDocumentInfo() {
-    const {documentInfo} = this.state
+    const {documentInfo, readonly} = this.state
     if (!documentInfo) {
       return null
     }
     return (
       <div className="document-info">
         <div className="document-name">
-          <InlineEditorComponent text={documentInfo.name} changeText={this.changeDocumentName} />
+          <InlineEditorComponent text={documentInfo.name} changeText={this.changeDocumentName} readonly={readonly} />
         </div>
         <div className="instance-info">Template</div>
       </div>
@@ -375,6 +380,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             window={window}
             top={id === topWindowId}
             zIndex={zIndex}
+            readonly={this.state.readonly}
             moveWindowToTop={this.moveWindowToTop}
             closeWindow={this.closeWindow}
             registerDragWindow={this.registerDragWindow}
@@ -387,7 +393,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderMinimizedWindows(minimizedWindowIds:string[]) {
-    const {windowProps} = this.state
+    const {windowProps, readonly} = this.state
     const windows:JSX.Element[] = []
     minimizedWindowIds.forEach((id, index) => {
       const window = windowProps[id]
@@ -398,6 +404,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             key={id}
             title={window.title}
             restoreMinimizedWindow={this.restoreMinimizedWindow}
+            readonly={readonly}
           />)
       }
     })

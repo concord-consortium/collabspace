@@ -40,6 +40,7 @@ export interface WindowComponentProps {
   window: WindowProps
   top: boolean
   zIndex: number
+  readonly: boolean,
   moveWindowToTop: (key:string) => void
   closeWindow: (key:string) => void
   setWindowState: (key:string, minimized: boolean, maximized: boolean) => void
@@ -129,7 +130,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   handleClose(e:React.MouseEvent<HTMLSpanElement>) {
-    if (e.ctrlKey || confirm("Are you sure you want to close the window?")) {
+    if (!this.props.readonly && (e.ctrlKey || confirm("Are you sure you want to close the window?"))) {
       this.props.closeWindow(this.props.id)
     }
   }
@@ -156,7 +157,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   }
 
   render() {
-    const {window, top, id} = this.props
+    const {window, top, id, readonly} = this.props
     const {maximized, minimized} = window
     const titlebarClass = `titlebar${top ? " top" : ""}`
     let windowStyle:any = maximized
@@ -169,9 +170,9 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
 
     return (
       <div className="window" ref="window" key={id} style={windowStyle}>
-        <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
+        <div className={titlebarClass} onMouseDown={(e) => !readonly ? this.handleDragWindow(e) : null}>
           <div className="title">
-            <InlineEditorComponent text={window.title} changeText={this.handleChangeTitle} />
+            <InlineEditorComponent text={window.title} changeText={this.handleChangeTitle} readonly={readonly} />
           </div>
           {this.renderButtons()}
         </div>
@@ -179,12 +180,12 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
           <WindowIframeComponent key={id} src={window.url} />
         </div>
         {this.renderIframeOverlay()}
-        {!maximized ? <div className="left-drag" onMouseDown={this.handleDragLeft} /> : null}
-        {!maximized ? <div className="right-drag" onMouseDown={this.handleDragRight} /> : null}
-        {!maximized ? <div className="top-drag" onMouseDown={this.handleDragTop} /> : null}
-        {!maximized ? <div className="bottom-drag" onMouseDown={this.handleDragBottom} /> : null}
-        {!maximized ? <div className="bottom-left-drag" onMouseDown={this.handleDragBottomLeft} /> : null}
-        {!maximized ? <div className="bottom-right-drag" onMouseDown={this.handleDragBottomRight} /> : null}
+        {!maximized && !readonly ? <div className="left-drag" onMouseDown={this.handleDragLeft} /> : null}
+        {!maximized && !readonly ? <div className="right-drag" onMouseDown={this.handleDragRight} /> : null}
+        {!maximized && !readonly ? <div className="top-drag" onMouseDown={this.handleDragTop} /> : null}
+        {!maximized && !readonly ? <div className="bottom-drag" onMouseDown={this.handleDragBottom} /> : null}
+        {!maximized && !readonly ? <div className="bottom-left-drag" onMouseDown={this.handleDragBottomLeft} /> : null}
+        {!maximized && !readonly ? <div className="bottom-right-drag" onMouseDown={this.handleDragBottomRight} /> : null}
       </div>
     )
   }
