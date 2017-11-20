@@ -26,7 +26,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.state = {
       readonly: false,
       documentInfo: null,
-      allWindows: [],
+      allOrderedWindows: [],
       minimizedWindows: [],
       topWindow: null
     }
@@ -215,15 +215,17 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderAllWindows() {
-    const {allWindows, topWindow} = this.state
+    const {allOrderedWindows, topWindow} = this.state
 
-    // note: all windows are rendered with display: none for minimized to ensure React doesn't try to reload the iframes
-    return allWindows.map((window, index) => {
+    // Note: all windows are rendered with display: none for minimized to ensure React doesn't try to reload the iframes
+    // (which happens when you reorder DOM elements with iframes with React (even if you specify key values))
+    return allOrderedWindows.map((orderedWindow) => {
+      const {window} = orderedWindow
       return <WindowComponent
                key={window.id}
                window={window}
                isTopWindow={window === topWindow}
-               zIndex={index}
+               zIndex={orderedWindow.order}
                windowManager={this.windowManager}
              />
     })

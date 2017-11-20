@@ -31,8 +31,13 @@ export interface DragInfo {
   type: DragType
 }
 
+export interface OrderedWindow {
+  order: number
+  window: Window
+}
+
 export interface WindowManagerState {
-  allWindows: Window[]
+  allOrderedWindows: OrderedWindow[]
   minimizedWindows: Window[]
   topWindow: Window|null
 }
@@ -56,7 +61,7 @@ export class WindowManager {
     this.windows = {}
     this.dragInfo = {window: null, type: DragType.None}
     this.state = {
-      allWindows: [],
+      allOrderedWindows: [],
       minimizedWindows: [],
       topWindow: null
     }
@@ -121,17 +126,22 @@ export class WindowManager {
   }
 
   handleOrderChange(snapshot:firebase.database.DataSnapshot) {
-    this.state.allWindows = []
+    this.state.allOrderedWindows = []
     this.state.topWindow = null
 
+    let topOrder = 0
     const windowOrder:string[]|null = snapshot.val()
     if (windowOrder !== null) {
-      windowOrder.forEach((id) => {
+      Object.keys(this.windows).forEach((id) => {
         const window = this.windows[id]
-        if (window) {
-          this.state.allWindows.push(window)
+        const order = windowOrder.indexOf(id)
+        if (window && (order !== -1)) {
+          this.state.allOrderedWindows.push({order, window})
           if (!window.attrs.minimized) {
-            this.state.topWindow = window
+            if (!this.state.topWindow || (order > topOrder)) {
+              this.state.topWindow = window
+              topOrder = order
+            }
           }
         }
       })
