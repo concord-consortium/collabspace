@@ -213,9 +213,6 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
   renderAllWindows() {
     const {allOrderedWindows, topWindow} = this.state
-
-    // Note: all windows are rendered with display: none for minimized to ensure React doesn't try to reload the iframes
-    // (which happens when you reorder DOM elements with iframes with React (even if you specify key values))
     return allOrderedWindows.map((orderedWindow) => {
       const {window} = orderedWindow
       return <WindowComponent

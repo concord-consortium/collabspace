@@ -122,9 +122,16 @@ export class WindowManager {
     // NOTE: there is no state change notification here on purpose as
     // the window manager state is only concerned with the order of the windows.
     // This does mean that the attrs map needs to be set for a window id before
-    // the window id is added to the ordered lists as is done in add() below
+    // the window id is added to the ordered lists as is done in add() below.
+    // The window component will trigger a re-render when its setAttrs() method is called
+    // which is much more performant since only that window needs to re-render
   }
 
+  // You may ask yourself "Why not just maintain the list of windows in the state
+  // as a plain array?".  The reason it is not done is that React will move the
+  // iframe element in the DOM on a re-render which causes the iframe to reload.
+  // By keeping the render ordering always the same and using a separate order field
+  // to set the zIndex of the window we avoid iframe reloads.
   handleOrderChange(snapshot:firebase.database.DataSnapshot) {
     this.state.allOrderedWindows = []
     this.state.topWindow = null
