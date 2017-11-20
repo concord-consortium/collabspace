@@ -1,6 +1,37 @@
 import * as React from "react"
+import {CollabSpaceClient, CollabSpaceClientInitRequest} from "../lib/collabspace-client"
+import * as firebase from "firebase"
+import * as _ from "lodash"
 
 declare const DrawingTool:any
+
+export class FirebaseStorage {
+  dataRef: firebase.database.Reference
+  readonly: boolean
+  loadFunction: Function|null
+
+  constructor (dataRef: firebase.database.Reference, readonly: boolean) {
+    this.dataRef = dataRef
+    this.readonly = readonly
+
+    dataRef.on("value", (snapshot:firebase.database.DataSnapshot) => {
+      const data = snapshot.val() || {}
+      if (!_.isEmpty(data) && this.loadFunction) {
+        this.loadFunction(data)
+      }
+    })
+  }
+
+  save(data:any) {
+    if (!this.readonly) {
+      this.dataRef.set(typeof data == 'string' ? JSON.parse(data) : data)
+    }
+  }
+
+  setLoadFunction(loadFunction: Function) {
+    this.loadFunction = loadFunction
+  }
+}
 
 export interface DrawingToolComponentProps {
 }
@@ -11,11 +42,11 @@ export interface DrawingToolComponentState {
 export class DrawingToolComponent extends React.Component<DrawingToolComponentProps, DrawingToolComponentState> {
   drawingTool: any|null
   resizeTimeout: number|null
+  collabSpaceClient: CollabSpaceClient
 
   constructor (props:DrawingToolComponentProps) {
     super(props)
-    this.state = {
-    }
+    this.state = {}
     this.debounceResize = this.debounceResize.bind(this)
     this.resize = this.resize.bind(this)
   }
@@ -34,6 +65,14 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
     })
     this.resize()
     window.addEventListener("resize", this.debounceResize, false)
+
+    this.collabSpaceClient = new CollabSpaceClient({
+      init: (req) => {
+        const firebaseStorage = new FirebaseStorage(this.collabSpaceClient.dataRef, req.readonly)
+        this.drawingTool.addStore(firebaseStorage)
+        return {}
+      }
+    })
   }
 
   componentWillUnmount() {

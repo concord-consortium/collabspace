@@ -4,6 +4,7 @@ import { DocumentInfo, WindowProps, WindowPropsMap } from "./app"
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
+import { IFrameManager } from "../lib/iframe-manager"
 
 export interface WorkspaceComponentProps {
   authUser: firebase.User
@@ -38,6 +39,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   orderRef: firebase.database.Reference
   minimizedOrderRef: firebase.database.Reference
   dragInfo: DragInfo
+  iframeManager: IFrameManager
 
   constructor (props:WorkspaceComponentProps) {
     super(props)
@@ -49,6 +51,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       minimizedWindowOrder: []
     }
 
+    this.iframeManager = new IFrameManager(this.props.documentRef)
+
     this.dragInfo = {windowId: null, windowRef: null, type: DragType.None}
 
     this.moveWindowToTop = this.moveWindowToTop.bind(this)
@@ -57,6 +61,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.setWindowState = this.setWindowState.bind(this)
     this.changeWindowTitle = this.changeWindowTitle.bind(this)
     this.changeDocumentName = this.changeDocumentName.bind(this)
+    this.windowLoaded = this.windowLoaded.bind(this)
 
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
@@ -240,6 +245,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
           order.splice(index, 1)
         }
         this.orderRef.set(order)
+        this.iframeManager.remove(key)
       })
       this.propsRef.child(key).set(null)
     }
@@ -286,6 +292,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       this.state.documentInfo.name = newName
       this.infoRef.set(this.state.documentInfo)
     }
+  }
+
+  windowLoaded(windowId: string, iframe:HTMLIFrameElement) {
+    this.iframeManager.add(windowId, this.state.readonly, iframe)
   }
 
   handleDragOver(e:React.DragEvent<HTMLDivElement>) {
@@ -386,6 +396,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             registerDragWindow={this.registerDragWindow}
             setWindowState={this.setWindowState}
             changeWindowTitle={this.changeWindowTitle}
+            windowLoaded={this.windowLoaded}
           />)
       }
     })
@@ -447,12 +458,20 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     )
   }
 
+  renderReadonlyBlocker() {
+    if (this.state.readonly) {
+      return <div className="readonly-blocker" />
+    }
+    return null
+  }
+
   render() {
     return (
       <div className="workspace" onDrop={this.handleDrop} onDragOver={this.handleDragOver}>
         {this.renderHeader()}
         {this.renderToolbar()}
         {this.renderWindowArea()}
+        {this.renderReadonlyBlocker()}
       </div>
     )
   }

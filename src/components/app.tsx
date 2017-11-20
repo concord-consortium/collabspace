@@ -3,6 +3,7 @@ import * as firebase from "firebase"
 import * as queryString from "query-string"
 import { DocumentCrudComponent } from "./document-crud"
 import { WorkspaceComponent } from "./workspace"
+import { FirebaseConfig } from "../lib/firebase-config"
 
 export interface AppComponentProps {}
 
@@ -97,14 +98,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
   }
 
   componentWillMount() {
-    firebase.initializeApp({
-      apiKey: "AIzaSyCW8vg-bKrcQTaNiDHZvVd_CoGMsgztQ60",
-      authDomain: "collabspace-920f6.firebaseapp.com",
-      databaseURL: "https://collabspace-920f6.firebaseio.com",
-      projectId: "collabspace-920f6",
-      storageBucket: "collabspace-920f6.appspot.com",
-      messagingSenderId: "987825465426"
-    })
+    firebase.initializeApp(FirebaseConfig)
 
     let authed = false
     firebase.auth().onAuthStateChanged((authUser) => {

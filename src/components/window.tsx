@@ -6,6 +6,7 @@ import { InlineEditorComponent } from "./inline-editor"
 
 export interface WindowIframeComponentProps {
   src: string | undefined
+  loaded: (iframe:HTMLIFrameElement) => void
 }
 
 export interface WindowIframeComponentState {
@@ -24,6 +25,7 @@ export class WindowIframeComponent extends React.Component<WindowIframeComponent
   }
 
   loaded() {
+    this.props.loaded(this.refs.iframe)
   }
 
   shouldComponentUpdate() {
@@ -46,6 +48,7 @@ export interface WindowComponentProps {
   setWindowState: (key:string, minimized: boolean, maximized: boolean) => void
   registerDragWindow: (windowId:string|null, type:DragType) => void
   changeWindowTitle: (windowId:string, newTitle:string) => void
+  windowLoaded: (windowId:string, iframe:HTMLIFrameElement) => void
 }
 export interface WindowComponentState {
   editingTitle: boolean
@@ -70,6 +73,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.handleMaximize = this.handleMaximize.bind(this)
     this.handleClose = this.handleClose.bind(this)
     this.handleChangeTitle = this.handleChangeTitle.bind(this)
+    this.handleIframeLoaded = this.handleIframeLoaded.bind(this)
   }
 
   refs: {
@@ -139,6 +143,10 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     this.props.changeWindowTitle(this.props.id, newTitle)
   }
 
+  handleIframeLoaded(iframe:HTMLIFrameElement) {
+    this.props.windowLoaded(this.props.id, iframe)
+  }
+
   renderIframeOverlay() {
     if (this.props.top) {
       return null
@@ -177,7 +185,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
           {this.renderButtons()}
         </div>
         <div className="iframe">
-          <WindowIframeComponent key={id} src={window.url} />
+          <WindowIframeComponent key={id} src={window.url} loaded={this.handleIframeLoaded} />
         </div>
         {this.renderIframeOverlay()}
         {!maximized && !readonly ? <div className="left-drag" onMouseDown={this.handleDragLeft} /> : null}
