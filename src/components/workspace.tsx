@@ -13,7 +13,6 @@ export interface WorkspaceComponentProps {
   setTitle: (documentName?:string|null) => void
 }
 export interface WorkspaceComponentState extends WindowManagerState {
-  readonly: boolean
   documentInfo: FirebaseDocumentInfo|null
 }
 
@@ -24,7 +23,6 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   constructor (props:WorkspaceComponentProps) {
     super(props)
     this.state = {
-      readonly: false,
       documentInfo: null,
       allOrderedWindows: [],
       minimizedWindows: [],
@@ -67,8 +65,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   handleInfoChange(snapshot:firebase.database.DataSnapshot|null) {
     if (snapshot) {
       const documentInfo:FirebaseDocumentInfo|null = snapshot.val()
-      const readonly = documentInfo ? documentInfo.ownerId !== this.props.authUser.uid : false
-      this.setState({documentInfo, readonly})
+      this.setState({documentInfo})
       this.props.setTitle(documentInfo ? documentInfo.name : null)
     }
   }
@@ -209,7 +206,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   renderToolbar() {
     return (
       <div className="toolbar">
-        {this.state.readonly ? this.renderReadonlyToolbar() : this.renderToolbarButtons()}
+        {this.props.document.readonly ? this.renderReadonlyToolbar() : this.renderToolbarButtons()}
       </div>
     )
   }
@@ -259,7 +256,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderReadonlyBlocker() {
-    if (this.state.readonly) {
+    if (this.props.document.readonly) {
       return <div className="readonly-blocker" />
     }
     return null
