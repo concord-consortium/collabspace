@@ -39,7 +39,7 @@ export class IFrameManager {
       windowId,
       element,
       connected: false,
-      dataRef: this.documentRef.child(`data/iframes/${windowId}`),
+      dataRef: this.documentRef.child(`data/windows/iframes/${windowId}`),
       phone: IFramePhoneFactory.ParentEndpoint(element, () => {
         iframe.connected = true
         const initRequest:CollabSpaceClientInitRequest = {

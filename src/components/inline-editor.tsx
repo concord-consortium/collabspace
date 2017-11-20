@@ -3,7 +3,6 @@ import * as React from "react"
 export interface InlineEditorComponentProps {
   text: string
   changeText: (newText: string) => void
-  readonly: boolean
 }
 
 export interface InlineEditorComponentState {
@@ -53,13 +52,11 @@ export class InlineEditorComponent extends React.Component<InlineEditorComponent
   }
 
   handleDoubleClick() {
-    if (!this.props.readonly) {
-      this.setState({editing: true}, () => {
-        const {text} = this.refs
-        text.focus()
-        text.selectionStart = text.selectionEnd = text.value.length
-      })
-    }
+    this.setState({editing: true}, () => {
+      const {text} = this.refs
+      text.focus()
+      text.selectionStart = text.selectionEnd = text.value.length
+    })
   }
 
   handleChange() {
