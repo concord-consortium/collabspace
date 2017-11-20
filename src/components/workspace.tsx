@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as firebase from "firebase"
-import { DocumentInfo, WindowProps, WindowPropsMap } from "./app"
+import { FirebaseDocumentInfo, Document } from "../lib/document"
+import { FirebaseWindowProps, FirebaseWindowPropsMap } from "../lib/window"
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
@@ -8,12 +9,13 @@ import { IFrameManager } from "../lib/iframe-manager"
 
 export interface WorkspaceComponentProps {
   authUser: firebase.User
-  documentRef: firebase.database.Reference
+  document: Document
+  setTitle: (documentName?:string|null) => void
 }
 export interface WorkspaceComponentState {
   readonly: boolean
-  documentInfo: DocumentInfo|null
-  windowProps: WindowPropsMap
+  documentInfo: FirebaseDocumentInfo|null
+  windowProps: FirebaseWindowPropsMap
   windowOrder: string[]
   minimizedWindowOrder: string[]
 }
@@ -51,7 +53,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       minimizedWindowOrder: []
     }
 
-    this.iframeManager = new IFrameManager(this.props.documentRef)
+    this.iframeManager = new IFrameManager(this.props.document.ref)
 
     this.dragInfo = {windowId: null, windowRef: null, type: DragType.None}
 
@@ -77,10 +79,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   componentWillMount() {
-    this.infoRef = this.props.documentRef.child("info")
-    this.propsRef = this.props.documentRef.child("data/windows/props")
-    this.orderRef = this.props.documentRef.child("data/windows/order")
-    this.minimizedOrderRef = this.props.documentRef.child("data/windows/minimizedOrder")
+    this.infoRef = this.props.document.ref.child("info")
+    this.propsRef = this.props.document.ref.child("data/windows/props")
+    this.orderRef = this.props.document.ref.child("data/windows/order")
+    this.minimizedOrderRef = this.props.document.ref.child("data/windows/minimizedOrder")
 
     this.infoRef.on("value", this.handleInfoChange)
     this.propsRef.on("value", this.handlePropsChange)
@@ -105,9 +107,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
   handleInfoChange(snapshot:firebase.database.DataSnapshot|null) {
     if (snapshot) {
-      const documentInfo:DocumentInfo|null = snapshot.val()
+      const documentInfo:FirebaseDocumentInfo|null = snapshot.val()
       const readonly = documentInfo ? documentInfo.ownerId !== this.props.authUser.uid : false
       this.setState({documentInfo, readonly})
+      this.props.setTitle(documentInfo ? documentInfo.name : null)
     }
   }
 
@@ -204,7 +207,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     const randInRange = (min:number, max:number) => {
       return Math.round(min + (Math.random() * (max - min)))
     }
-    const win:WindowProps = {
+    const win:FirebaseWindowProps = {
       top: randInRange(50, 200),
       left: randInRange(50, 200),
       width: 400,

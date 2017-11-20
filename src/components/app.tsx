@@ -1,6 +1,8 @@
 import * as React from "react"
 import * as firebase from "firebase"
 import * as queryString from "query-string"
+import { FirebaseDocument, Document, FirebaseDocumentInfo } from "../lib/document"
+import { FirebaseWindow } from "../lib/window"
 import { DocumentCrudComponent } from "./document-crud"
 import { WorkspaceComponent } from "./workspace"
 import { FirebaseConfig } from "../lib/firebase-config"
@@ -12,69 +14,11 @@ export interface AppComponentState {
   authError: string|null
   documentError: string|null
   documentId: string|null
-  documentRef: firebase.database.Reference|null
-  documentExists: boolean
+  document: Document|null
 }
 
 export interface AppParams {
   document: string|null
-}
-
-export interface WindowProps {
-  top: number
-  left: number
-  width: number
-  height: number
-  url: string
-  title: string
-  // two booleans are used instead of a single state so that we remember if the window should
-  // restore to maximized after being minimized
-  minimized: boolean
-  maximized: boolean
-}
-
-export interface WindowPropsMap {
-  [key: string]: WindowProps|null
-}
-
-export interface WindowDataMap {
-  [key: string]: any|null
-}
-
-export interface DocumentData {
-  windows: {
-    props: WindowPropsMap
-    order: string[]
-    minimizedOrder: string[]
-    data: WindowDataMap
-  }
-}
-
-export interface DocumentInfo {
-  version: "1.0.0",
-  ownerId: string
-  createdAt: number|Object
-  name: string
-}
-
-export interface Document {
-  info: DocumentInfo
-  data?: DocumentData
-}
-
-export function getDocumentRef(fullDocumentId:string) {
-  const [ownerId, documentId, ...rest] = fullDocumentId.split(":")
-  if (!ownerId && !documentId) {
-    return null
-  }
-  if (ownerId === "instance") {
-    return firebase.database().ref(`instances/${documentId}`)
-  }
-  return firebase.database().ref(`templates/${ownerId}/${documentId}`)
-}
-
-export function getDocumentListRef(userId:string) {
-  return firebase.database().ref(`templates/${userId}`)
 }
 
 export class AppComponent extends React.Component<AppComponentProps, AppComponentState> {
@@ -88,13 +32,10 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       documentError: null,
       authUser: null,
       documentId: null,
-      documentRef: null,
-      documentExists: false
+      document: null
     }
     this.startingTitle = document.title
-    this.documentInfoRef = null
-
-    this.handleDocumentInfoChange = this.handleDocumentInfoChange.bind(this)
+    this.setTitle = this.setTitle.bind(this)
   }
 
   componentWillMount() {
@@ -117,45 +58,37 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     })
   }
 
-  setTitle(info:DocumentInfo|null) {
-    const suffix = info ? `: ${info.name}` : ""
+  setTitle(documentName?:string|null) {
+    const suffix = documentName ? `: ${documentName}` : ""
     document.title = this.startingTitle + suffix
   }
 
   parseHash() {
     const params:AppParams = queryString.parse(window.location.hash)
-    this.setState({
-      documentId: params.document || null,
-      documentRef: null,
-      documentExists: false,
-      documentError: null
-    })
 
-    if (this.documentInfoRef) {
-      this.documentInfoRef.off("value", this.handleDocumentInfoChange)
+    if (this.state.document) {
+      this.state.document.destroy()
     }
 
+    this.setState({
+      documentId: params.document || null,
+      documentError: null,
+      document: null
+    })
+
+    this.setTitle()
+
     if (params.document) {
-      const documentRef = getDocumentRef(params.document)
-      if (documentRef) {
-        this.setState({documentRef})
-        this.documentInfoRef = documentRef.child("info")
-        this.documentInfoRef.on("value", this.handleDocumentInfoChange)
+      const parsedParam = Document.ParseHashParam(params.document)
+      if (parsedParam) {
+        Document.LoadFromFirebase(parsedParam.ownerId, parsedParam.documentId)
+          .then((document) => this.setState({document}))
+          .catch((documentError) => this.setState({documentError}))
       }
       else {
         this.setState({documentError: "Invalid collaborative space document in url!"})
       }
     }
-  }
-
-  handleDocumentInfoChange(snapshot:firebase.database.DataSnapshot|null) {
-    const documentInfo = (snapshot && snapshot.val()) || null
-    const documentExists = !!documentInfo && documentInfo.version
-    this.setState({documentExists})
-    if (!documentExists) {
-      this.setState({documentError: "Unable to load collaborative space document!"})
-    }
-    this.setTitle(documentInfo)
   }
 
   renderFatalError(message:string) {
@@ -174,10 +107,11 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
 
     if (this.state.authUser) {
       if (this.state.documentId) {
-        if (this.state.documentRef && this.state.documentExists) {
+        if (this.state.document) {
           return <WorkspaceComponent
                     authUser={this.state.authUser}
-                    documentRef={this.state.documentRef}
+                    document={this.state.document}
+                    setTitle={this.setTitle}
                  />
         }
         return this.renderProgress("Loading collaborative space document...")

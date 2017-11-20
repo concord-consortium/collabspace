@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as firebase from "firebase"
-import { WindowProps } from "./app"
+import { FirebaseWindowProps } from "../lib/window"
 import { DragType } from "./workspace"
 import { InlineEditorComponent } from "./inline-editor"
 
@@ -39,7 +39,7 @@ export class WindowIframeComponent extends React.Component<WindowIframeComponent
 
 export interface WindowComponentProps {
   id: string
-  window: WindowProps
+  window: FirebaseWindowProps
   top: boolean
   zIndex: number
   moveWindowToTop: (key:string) => void
