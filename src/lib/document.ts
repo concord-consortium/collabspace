@@ -23,30 +23,34 @@ export class Document {
   ownerId: string
   firebaseDocument: FirebaseDocument
   ref: firebase.database.Reference
+  dataRef: firebase.database.Reference
   infoRef: firebase.database.Reference
+  readonly: boolean
 
   constructor (id: string, firebaseDocument:FirebaseDocument) {
     this.id = id
     this.ownerId = firebaseDocument.info.ownerId
     this.firebaseDocument = firebaseDocument
     this.ref = Document.GetFirebaseRef(this.ownerId, this.id)
+    this.dataRef = this.ref.child("data")
     this.infoRef = this.ref.child("info")
+    this.readonly = true
   }
 
   destroy() {
   }
 
   static CreateInFirebase(ownerId:string, documentId:string): Promise<Document> {
-    const firebaseDocument:FirebaseDocument = {
-      info: {
-        version: "1.0.0",
-        ownerId,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        name: "Untitled"
-      }
-    }
-    const documentRef = Document.GetFirebaseRef(ownerId, documentId)
     return new Promise<Document>((resolve, reject) => {
+      const firebaseDocument:FirebaseDocument = {
+        info: {
+          version: "1.0.0",
+          ownerId,
+          createdAt: firebase.database.ServerValue.TIMESTAMP,
+          name: "Untitled"
+        }
+      }
+      const documentRef = Document.GetFirebaseRef(ownerId, documentId)
       documentRef.set(firebaseDocument, (err) => {
         if (err) {
           reject("Unable to create collaborative space document!")
@@ -59,8 +63,8 @@ export class Document {
   }
 
   static LoadFromFirebase(ownerId:string, documentId:string): Promise<Document> {
-    const documentRef = Document.GetFirebaseRef(ownerId, documentId)
     return new Promise<Document>((resolve, reject) => {
+      const documentRef = Document.GetFirebaseRef(ownerId, documentId)
       documentRef.once("value", (snapshot) => {
         const firebaseDocument:FirebaseDocument = snapshot.val()
         if (!firebaseDocument) {
@@ -100,4 +104,12 @@ export class Document {
   static StringifyHashParam(ownerId:string, documentId:string) {
     return `${ownerId}:${documentId}`
   }
+
+  // NOTE: the child should be a key in FirebaseWindow
+  // TODO: figure out how to type check the child param in FirebaseWindow
+  getWindowsDataRef(child:"attrs"|"order"|"minimizedOrder"|"iframeData") {
+    return this.dataRef.child(`windows/${child}`)
+  }
+
+
 }

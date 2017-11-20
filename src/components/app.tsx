@@ -82,7 +82,11 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       const parsedParam = Document.ParseHashParam(params.document)
       if (parsedParam) {
         Document.LoadFromFirebase(parsedParam.ownerId, parsedParam.documentId)
-          .then((document) => this.setState({document}))
+          .then((document) => {
+            const {authUser} = this.state
+            document.readonly = !!(authUser && (authUser.uid !== document.ownerId))
+            this.setState({document})
+          })
           .catch((documentError) => this.setState({documentError}))
       }
       else {
