@@ -1,7 +1,7 @@
 import * as React from "react"
 import * as firebase from "firebase"
 import {v4 as uuidV4} from "uuid"
-import {Document, getDocumentRef, getDocumentListRef, DocumentInfo} from "./app"
+import {FirebaseDocument, Document, FirebaseDocumentInfo} from "../lib/document"
 const timeago = require("timeago.js")
 
 const timeagoInstance = timeago()
@@ -9,7 +9,7 @@ const timeagoInstance = timeago()
 export interface DocumentInfoItem {
   id: string
   checked: boolean
-  info: DocumentInfo
+  info: FirebaseDocumentInfo
 }
 
 export interface DocumentInfoItemMap {
@@ -17,7 +17,7 @@ export interface DocumentInfoItemMap {
 }
 
 export interface DocumentMap {
-  [key: string]: Document
+  [key: string]: FirebaseDocument
 }
 
 export interface DocumentCrudItemComponentProps {
@@ -87,7 +87,7 @@ export class DocumentCrudComponent extends React.Component<DocumentCrudComponent
   }
 
   componentWillMount() {
-    this.listRef = getDocumentListRef(this.props.authUser.uid)
+    this.listRef = Document.GetFirebaseListRef(this.props.authUser.uid)
     this.listRef.on("value", this.handleDocumentList)
   }
 
@@ -115,30 +115,11 @@ export class DocumentCrudComponent extends React.Component<DocumentCrudComponent
   }
 
   handleCreateDocument() {
-    const ownerId = this.props.authUser.uid
+    const {uid} = this.props.authUser
     const documentId = uuidV4()
-    const document:Document = {
-      info: {
-        version: "1.0.0",
-        ownerId,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        name: "Untitled"
-      }
-    }
-    const documentRef = getDocumentRef(`${ownerId}:${documentId}`)
-    if (!documentRef) {
-      this.setState({error: "Unable to create collaborative space document!"})
-    }
-    else {
-      documentRef.set(document, (err) => {
-        if (err) {
-          this.setState({error: "Unable to create collaborative space document!"})
-        }
-        else {
-          window.location.hash = `document=${ownerId}:${documentId}`
-        }
-      })
-    }
+    Document.CreateInFirebase(uid, documentId)
+      .then((document) => window.location.hash = `document=${Document.StringifyHashParam(uid, documentId)}`)
+      .catch((error) => this.setState({error}))
   }
 
   handleDeleteDocuments(e:React.MouseEvent<HTMLButtonElement>) {
@@ -192,14 +173,6 @@ export class DocumentCrudComponent extends React.Component<DocumentCrudComponent
           <button type="button" onClick={this.handleCreateDocument}>Create Document</button>
           <button type="button" onClick={this.handleDeleteDocuments}>Delete Selected Documents</button>
         </div>
-      </div>
-    )
-  }
-
-  renderDebug() {
-    return (
-      <div className="debug">
-        {JSON.stringify(this.state.items, null, 2)}
       </div>
     )
   }
