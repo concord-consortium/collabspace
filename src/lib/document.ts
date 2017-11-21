@@ -25,7 +25,9 @@ export class Document {
   ref: firebase.database.Reference
   dataRef: firebase.database.Reference
   infoRef: firebase.database.Reference
-  readonly: boolean
+
+  isReadonly: boolean
+  isTemplate: boolean
 
   constructor (id: string, firebaseDocument:FirebaseDocument) {
     this.id = id
@@ -34,7 +36,8 @@ export class Document {
     this.ref = Document.GetFirebaseRef(this.ownerId, this.id)
     this.dataRef = this.ref.child("data")
     this.infoRef = this.ref.child("info")
-    this.readonly = true
+    this.isReadonly = true
+    this.isTemplate = true
   }
 
   destroy() {
@@ -103,6 +106,10 @@ export class Document {
 
   static StringifyHashParam(ownerId:string, documentId:string) {
     return `${ownerId}:${documentId}`
+  }
+
+  getHashParam() {
+    return Document.StringifyHashParam(this.ownerId, this.id)
   }
 
   // NOTE: the child should be a key in FirebaseWindow

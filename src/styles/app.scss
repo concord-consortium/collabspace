@@ -214,6 +214,13 @@ body {
           font-size: 14px;
           margin-right: 10px;
         }
+
+        .left-buttons {
+          float: left;
+        }
+        .right-buttons {
+          float: right;
+        }
       }
     }
 
@@ -420,6 +427,14 @@ body {
         font-family: monospace;
         margin: 20px;
       }
+    }
+  }
+
+  .demo {
+    text-align: center;
+
+    div {
+      margin: 10px 0;
     }
   }
 }

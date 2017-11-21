@@ -274,7 +274,7 @@ export class WindowManager {
         const initRequest:CollabSpaceClientInitRequest = {
           version: "1.0.0",
           id: window.id,
-          readonly: this.document.readonly,
+          readonly: this.document.isReadonly,
           firebase: {
             config: FirebaseConfig,
             dataPath: window.iframe.dataRef.toString().substring(window.iframe.dataRef.root.toString().length)

@@ -6,6 +6,7 @@ import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
 import { WindowManager, WindowManagerState, DragType } from "../lib/window-manager"
+import { v4 as uuidV4} from "uuid"
 
 export interface WorkspaceComponentProps {
   authUser: firebase.User
@@ -14,6 +15,7 @@ export interface WorkspaceComponentProps {
 }
 export interface WorkspaceComponentState extends WindowManagerState {
   documentInfo: FirebaseDocumentInfo|null
+  isTemplate: boolean
 }
 
 export class WorkspaceComponent extends React.Component<WorkspaceComponentProps, WorkspaceComponentState> {
@@ -24,6 +26,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     super(props)
     this.state = {
       documentInfo: null,
+      isTemplate: false,
       allOrderedWindows: [],
       minimizedWindows: [],
       topWindow: null
@@ -34,6 +37,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
     this.handleAddDrawingButton = this.handleAddDrawingButton.bind(this)
+    this.handleCreateDemoButton = this.handleCreateDemoButton.bind(this)
     this.handleInfoChange = this.handleInfoChange.bind(this)
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
@@ -160,6 +164,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.windowManager.add(`${window.location.origin}/drawing-tool.html`, "Untitled Drawing")
   }
 
+  handleCreateDemoButton() {
+    window.open(`${window.location.origin}/#document=${this.props.document.getHashParam()}&demo=${uuidV4()}`)
+  }
+
   renderDocumentInfo() {
     const {documentInfo} = this.state
     if (!documentInfo) {
@@ -196,9 +204,16 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderToolbarButtons() {
+    const {document} = this.props
+    const showDemoButton = document.isTemplate && !document.isReadonly
     return (
       <div className="buttons">
-        <button type="button" onClick={this.handleAddDrawingButton}>Add Drawing</button>
+        <div className="left-buttons">
+          <button type="button" onClick={this.handleAddDrawingButton}>Add Drawing</button>
+        </div>
+        <div className="right-buttons">
+          {showDemoButton ? <button type="button" onClick={this.handleCreateDemoButton}>Create Demo</button> : null}
+        </div>
       </div>
     )
   }
@@ -206,7 +221,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   renderToolbar() {
     return (
       <div className="toolbar">
-        {this.props.document.readonly ? this.renderReadonlyToolbar() : this.renderToolbarButtons()}
+        {this.props.document.isReadonly ? this.renderReadonlyToolbar() : this.renderToolbarButtons()}
       </div>
     )
   }
@@ -253,7 +268,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderReadonlyBlocker() {
-    if (this.props.document.readonly) {
+    if (this.props.document.isReadonly) {
       return <div className="readonly-blocker" />
     }
     return null

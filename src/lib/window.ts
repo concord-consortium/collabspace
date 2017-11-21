@@ -88,7 +88,7 @@ export class Window {
 
   close() {
     this.destroy()
-    if (!this.document.readonly) {
+    if (!this.document.isReadonly) {
       this.iframe.dataRef.set(null)
       this.attrsRef.set(null)
     }
@@ -96,7 +96,7 @@ export class Window {
 
   setAttrs(attrs:FirebaseWindowAttrs, updateFirebase:boolean = true) {
     this.attrs = attrs
-    if (updateFirebase && !this.document.readonly) {
+    if (updateFirebase && !this.document.isReadonly) {
       this.attrsRef.set(attrs)
     }
     if (this.onAttrsChanged) {

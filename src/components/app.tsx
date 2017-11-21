@@ -6,6 +6,7 @@ import { FirebaseWindow } from "../lib/window"
 import { DocumentCrudComponent } from "./document-crud"
 import { WorkspaceComponent } from "./workspace"
 import { FirebaseConfig } from "../lib/firebase-config"
+import { DemoComponent } from "./demo"
 
 export interface AppComponentProps {}
 
@@ -15,10 +16,12 @@ export interface AppComponentState {
   documentError: string|null
   documentId: string|null
   document: Document|null
+  demoId: string|null
 }
 
 export interface AppParams {
   document: string|null
+  demo?: string
 }
 
 export class AppComponent extends React.Component<AppComponentProps, AppComponentState> {
@@ -32,7 +35,8 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       documentError: null,
       authUser: null,
       documentId: null,
-      document: null
+      document: null,
+      demoId: null
     }
     this.startingTitle = document.title
     this.setTitle = this.setTitle.bind(this)
@@ -73,7 +77,8 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     this.setState({
       documentId: params.document || null,
       documentError: null,
-      document: null
+      document: null,
+      demoId: params.demo || null
     })
 
     this.setTitle()
@@ -84,7 +89,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
         Document.LoadFromFirebase(parsedParam.ownerId, parsedParam.documentId)
           .then((document) => {
             const {authUser} = this.state
-            document.readonly = !!(authUser && (authUser.uid !== document.ownerId))
+            document.isReadonly = !!(authUser && (authUser.uid !== document.ownerId))
             this.setState({document})
           })
           .catch((documentError) => this.setState({documentError}))
@@ -112,6 +117,13 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     if (this.state.authUser) {
       if (this.state.documentId) {
         if (this.state.document) {
+          if (this.state.demoId) {
+            return <DemoComponent
+                     authUser={this.state.authUser}
+                     document={this.state.document}
+                     demoId={this.state.demoId}
+                   />
+          }
           return <WorkspaceComponent
                     authUser={this.state.authUser}
                     document={this.state.document}
