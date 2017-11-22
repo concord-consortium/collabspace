@@ -7,15 +7,19 @@ import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
 import { WindowManager, WindowManagerState, DragType } from "../lib/window-manager"
 import { v4 as uuidV4} from "uuid"
+import { PortalInfo } from "../lib/auth"
 
 export interface WorkspaceComponentProps {
-  authUser: firebase.User
+  portalInfo: PortalInfo|null
+  firebaseUser: firebase.User
   document: Document
   setTitle: (documentName?:string|null) => void
 }
 export interface WorkspaceComponentState extends WindowManagerState {
   documentInfo: FirebaseDocumentInfo|null
   isTemplate: boolean
+  workspaceName: string
+  debugInfo: string
 }
 
 export class WorkspaceComponent extends React.Component<WorkspaceComponentProps, WorkspaceComponentState> {
@@ -24,12 +28,17 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
   constructor (props:WorkspaceComponentProps) {
     super(props)
+
+    const {portalInfo} = props
+
     this.state = {
       documentInfo: null,
-      isTemplate: false,
+      isTemplate: this.props.portalInfo === null,
       allOrderedWindows: [],
       minimizedWindows: [],
-      topWindow: null
+      topWindow: null,
+      workspaceName: this.getWorkspaceName(portalInfo),
+      debugInfo: portalInfo ? `Class ID: ${portalInfo.classInfo.class_hash}` : ""
     }
 
     this.changeDocumentName = this.changeDocumentName.bind(this)
@@ -46,6 +55,16 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.windowManager = new WindowManager(this.props.document, (newState) => {
       this.setState(newState)
     })
+  }
+
+  getWorkspaceName(portalInfo:PortalInfo|null) {
+    if (!portalInfo) {
+      return "Template"
+    }
+    const {classInfo, isDemo} = portalInfo
+    const teacherNames = classInfo.teachers.map((teacher) => isDemo ? `${teacher.first_name} ${teacher.last_name}` : teacher.last_name)
+    const domain = isDemo ? "" : `: ${portalInfo.domain}`
+    return `${classInfo.name}: ${teacherNames.join(" & ")}${domain}`
   }
 
   componentWillMount() {
@@ -169,6 +188,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderDocumentInfo() {
+    const {portalInfo} = this.props
     const {documentInfo} = this.state
     if (!documentInfo) {
       return null
@@ -178,18 +198,20 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
         <div className="document-name">
           <InlineEditorComponent text={documentInfo.name} changeText={this.changeDocumentName} />
         </div>
-        <div className="instance-info">Template</div>
+        <div className="instance-info" title={this.state.debugInfo}>{this.state.workspaceName}</div>
       </div>
     )
   }
 
   renderHeader() {
-    const {authUser} = this.props
+    const {firebaseUser, portalInfo} = this.props
+    const className = `header${this.state.isTemplate ? " template" : ""}`
+    const userName = portalInfo ? `${portalInfo.user.first_name} ${portalInfo.user.last_name}` : (firebaseUser.isAnonymous ? "Anonymous User" : firebaseUser.displayName)
     return (
-      <div className="header">
+      <div className={className}>
         {this.renderDocumentInfo()}
         <div className="user-info">
-          <div className="user-name">{authUser.isAnonymous ? "Anonymous User" : authUser.displayName }</div>
+          <div className="user-name">{userName}</div>
         </div>
       </div>
     )
@@ -205,7 +227,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
   renderToolbarButtons() {
     const {document} = this.props
-    const showDemoButton = document.isTemplate && !document.isReadonly
+    const showDemoButton = this.state.isTemplate && !document.isReadonly
     return (
       <div className="buttons">
         <div className="left-buttons">
@@ -236,6 +258,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
                isTopWindow={window === topWindow}
                zIndex={orderedWindow.order}
                windowManager={this.windowManager}
+               isTemplate={this.state.isTemplate}
              />
     })
   }

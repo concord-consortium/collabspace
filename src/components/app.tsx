@@ -7,22 +7,25 @@ import { DocumentCrudComponent } from "./document-crud"
 import { WorkspaceComponent } from "./workspace"
 import { FirebaseConfig } from "../lib/firebase-config"
 import { DemoComponent } from "./demo"
+import { PortalUser, PortalInfo, portalAuth, firebaseAuth } from "../lib/auth"
 
 export interface AppComponentProps {}
 
 export interface AppComponentState {
-  authUser: firebase.User|null
+  firebaseUser: firebase.User|null
   authError: string|null
   documentError: string|null
   documentId: string|null
   document: Document|null
   demoId: string|null
+  portalInfo: PortalInfo|null
 }
 
-export interface AppParams {
+export interface AppHashParams {
   document: string|null
   demo?: string
 }
+
 
 export class AppComponent extends React.Component<AppComponentProps, AppComponentState> {
   startingTitle: string
@@ -33,10 +36,11 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     this.state = {
       authError: null,
       documentError: null,
-      authUser: null,
+      firebaseUser: null,
       documentId: null,
       document: null,
-      demoId: null
+      demoId: null,
+      portalInfo: null
     }
     this.startingTitle = document.title
     this.setTitle = this.setTitle.bind(this)
@@ -45,20 +49,18 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
   componentWillMount() {
     firebase.initializeApp(FirebaseConfig)
 
-    let authed = false
-    firebase.auth().onAuthStateChanged((authUser) => {
-      this.setState({authUser})
+    portalAuth().then((portalInfo) => {
+      this.setState({portalInfo})
 
-      // parse the hash after authenticating the first time
-      if (!authed) {
-        authed = true
+      return firebaseAuth().then((firebaseUser) => {
+        this.setState({firebaseUser})
+
         this.parseHash()
         window.addEventListener("hashchange", this.parseHash.bind(this))
-      }
+      })
     })
-
-    firebase.auth().signInAnonymously().catch((authError) => {
-      this.setState({authError: authError.toString()})
+    .catch((error) => {
+      this.setState({authError: error.toString()})
     })
   }
 
@@ -68,7 +70,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
   }
 
   parseHash() {
-    const params:AppParams = queryString.parse(window.location.hash)
+    const params:AppHashParams = queryString.parse(window.location.hash)
 
     if (this.state.document) {
       this.state.document.destroy()
@@ -88,8 +90,8 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       if (parsedParam) {
         Document.LoadFromFirebase(parsedParam.ownerId, parsedParam.documentId)
           .then((document) => {
-            const {authUser} = this.state
-            document.isReadonly = !!(authUser && (authUser.uid !== document.ownerId))
+            const {firebaseUser} = this.state
+            document.isReadonly = !!(firebaseUser && (firebaseUser.uid !== document.ownerId))
             this.setState({document})
           })
           .catch((documentError) => this.setState({documentError}))
@@ -100,8 +102,8 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     }
   }
 
-  renderFatalError(message:string) {
-    return <div className="error">{message}</div>
+  renderFatalError(message:string, errorType:string) {
+    return <div className="error">{errorType} Error: {message}</div>
   }
 
   renderProgress(message:string) {
@@ -111,28 +113,29 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
   render() {
     const error = this.state.authError || this.state.documentError
     if (error) {
-      return this.renderFatalError(error)
+      return this.renderFatalError(error, error === this.state.authError ? "Authorization" : "Document")
     }
 
-    if (this.state.authUser) {
+    if (this.state.firebaseUser) {
       if (this.state.documentId) {
         if (this.state.document) {
           if (this.state.demoId) {
             return <DemoComponent
-                     authUser={this.state.authUser}
+                     firebaseUser={this.state.firebaseUser}
                      document={this.state.document}
                      demoId={this.state.demoId}
                    />
           }
           return <WorkspaceComponent
-                    authUser={this.state.authUser}
+                    portalInfo={this.state.portalInfo}
+                    firebaseUser={this.state.firebaseUser}
                     document={this.state.document}
                     setTitle={this.setTitle}
                  />
         }
         return this.renderProgress("Loading collaborative space document...")
       }
-      return <DocumentCrudComponent authUser={this.state.authUser} />
+      return <DocumentCrudComponent firebaseUser={this.state.firebaseUser} />
     }
 
     return this.renderProgress("Authenticating...")

@@ -27,7 +27,6 @@ export class Document {
   infoRef: firebase.database.Reference
 
   isReadonly: boolean
-  isTemplate: boolean
 
   constructor (id: string, firebaseDocument:FirebaseDocument) {
     this.id = id
@@ -37,7 +36,6 @@ export class Document {
     this.dataRef = this.ref.child("data")
     this.infoRef = this.ref.child("info")
     this.isReadonly = true
-    this.isTemplate = true
   }
 
   destroy() {

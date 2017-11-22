@@ -47,6 +47,7 @@ export interface WindowComponentProps {
   windowManager: WindowManager
   isTopWindow: boolean
   zIndex: number
+  isTemplate: boolean
 }
 export interface WindowComponentState {
   editingTitle: boolean
@@ -172,7 +173,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
       <div className="buttons" ref="buttons">
         <span onClick={this.handleMinimize} title="Minimize Window">-</span>
         <span onClick={this.handleMaximize} title={this.props.window.attrs.maximized ? "Unmaximize Window" : "Maximize Window"}>+</span>
-        <span onClick={this.handleClose} title="Close Window">x</span>
+        {this.props.isTemplate ? <span onClick={this.handleClose} title="Close Window">x</span> : null}
       </div>
     )
   }

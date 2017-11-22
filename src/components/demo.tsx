@@ -5,7 +5,7 @@ import * as firebase from "firebase"
 const demoInfo = require("../../functions/demo-info").demoInfo;
 
 export interface DemoComponentProps {
-  authUser: firebase.User
+  firebaseUser: firebase.User
   document: Document
   demoId: string
 }
