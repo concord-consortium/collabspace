@@ -9,9 +9,12 @@ import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
 import { WindowManager, WindowManagerState, DragType } from "../lib/window-manager"
 import { v4 as uuidV4} from "uuid"
-import { PortalUser, PortalActivity, PortalUserConnected, PortalUserDisconnected } from "../lib/auth"
+import { PortalUser, PortalUserMap, PortalActivity, PortalUserConnectionStatusMap, PortalUserConnected, PortalUserDisconnected } from "../lib/auth"
 import { AppHashParams } from "./app"
 import escapeFirebaseKey from "../lib/escape-firebase-key"
+
+const timeago = require("timeago.js")
+const timeagoInstance = timeago()
 
 export interface WorkspaceComponentProps {
   portalUser: PortalUser|null
@@ -21,23 +24,34 @@ export interface WorkspaceComponentProps {
   setTitle: ((documentName?:string|null) => void)|null
   isTemplate: boolean
   groupRef: firebase.database.Reference|null
+  group: number|null
 }
 export interface WorkspaceComponentState extends WindowManagerState {
   documentInfo: FirebaseDocumentInfo|null
   workspaceName: string
   debugInfo: string
+  groupUsers: PortalUserConnectionStatusMap|null
+  classUserLookup: PortalUserMap
 }
 
 export class WorkspaceComponent extends React.Component<WorkspaceComponentProps, WorkspaceComponentState> {
   infoRef: firebase.database.Reference
-  connectedRef: firebase.database.Reference
+  connectedRef: firebase.database.Reference|null
   userRef: firebase.database.Reference|null
+  groupUsersRef: firebase.database.Reference|null
   windowManager: WindowManager
 
   constructor (props:WorkspaceComponentProps) {
     super(props)
 
     const {portalActivity} = props
+
+    const classUserLookup:PortalUserMap = {}
+    if (portalActivity) {
+      portalActivity.classInfo.students.forEach((student) => {
+        classUserLookup[escapeFirebaseKey(student.email)] = student
+      })
+    }
 
     this.state = {
       documentInfo: null,
@@ -46,6 +60,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       topWindow: null,
       workspaceName: this.getWorkspaceName(portalActivity),
       debugInfo: portalActivity ? `Class ID: ${portalActivity.classInfo.classHash}` : "",
+      groupUsers: null,
+      classUserLookup: classUserLookup
     }
 
     this.changeDocumentName = this.changeDocumentName.bind(this)
@@ -56,6 +72,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleCreateDemoButton = this.handleCreateDemoButton.bind(this)
     this.handleInfoChange = this.handleInfoChange.bind(this)
     this.handleConnected = this.handleConnected.bind(this)
+    this.handleGroupUsersChange = this.handleGroupUsersChange.bind(this)
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
     this.handleWindowMouseUp = this.handleWindowMouseUp.bind(this)
@@ -76,15 +93,19 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       this.setState(newState)
     })
 
-
     this.infoRef = this.props.document.ref.child("info")
     this.infoRef.on("value", this.handleInfoChange)
 
     const {groupRef, portalUser} = this.props
-    if (groupRef && portalUser && portalUser.type === "student") {
-      this.userRef = groupRef.child("users").child(escapeFirebaseKey(portalUser.email))
-      this.connectedRef = firebase.database().ref(".info/connected")
-      this.connectedRef.on("value", this.handleConnected)
+    if (groupRef) {
+      this.groupUsersRef = groupRef.child("users")
+      this.groupUsersRef.on("value", this.handleGroupUsersChange)
+
+      if (portalUser && portalUser.type === "student") {
+        this.userRef = this.groupUsersRef.child(escapeFirebaseKey(portalUser.email))
+        this.connectedRef = firebase.database().ref(".info/connected")
+        this.connectedRef.on("value", this.handleConnected)
+      }
     }
 
     window.addEventListener("mousedown", this.handleWindowMouseDown)
@@ -96,7 +117,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.windowManager.destroy()
 
     this.infoRef.off("value", this.handleInfoChange)
-    this.connectedRef.off("value", this.handleConnected)
+    this.connectedRef && this.connectedRef.off("value", this.handleConnected)
+    this.groupUsersRef && this.groupUsersRef.off("value", this.handleGroupUsersChange)
 
     window.removeEventListener("mousedown", this.handleWindowMouseDown)
     window.removeEventListener("mousemove", this.handleWindowMouseMove, true)
@@ -118,11 +140,20 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     }
   }
 
+  handleGroupUsersChange(snapshot:firebase.database.DataSnapshot|null) {
+    if (snapshot && this.groupUsersRef) {
+      const groupUsers:PortalUserConnectionStatusMap|null = snapshot.val()
+      this.setState({groupUsers})
+    }
+  }
+
   handleInfoChange(snapshot:firebase.database.DataSnapshot|null) {
-    if (snapshot && this.props.setTitle) {
+    if (snapshot) {
       const documentInfo:FirebaseDocumentInfo|null = snapshot.val()
       this.setState({documentInfo})
-      this.props.setTitle(documentInfo ? documentInfo.name : null)
+      if (this.props.setTitle) {
+        this.props.setTitle(documentInfo ? documentInfo.name : null)
+      }
     }
   }
 
@@ -239,6 +270,28 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     )
   }
 
+  renderGroupInfo() {
+    const {portalActivity} = this.props
+    const {groupUsers} = this.state
+    if (!groupUsers || !portalActivity) {
+      return null
+    }
+    const users:JSX.Element[] = []
+    Object.keys(groupUsers).forEach((email) => {
+      const groupUser = groupUsers[email]
+      const portalUser = this.state.classUserLookup[escapeFirebaseKey(email)]
+      if (portalUser) {
+        const {connected} = groupUser
+        const className = `group-user ${groupUser.connected ? "connected" : "disconnected"}`
+        const titleSuffix = groupUser.connected ? `connected ${timeagoInstance.format(groupUser.connectedAt)}` : `disconnected ${timeagoInstance.format(groupUser.disconnectedAt)}`
+        users.push(<div key={email} className={className} title={`${portalUser.fullName}: ${titleSuffix}`}>{portalUser.initials}</div>)
+      }
+    })
+    return (
+      <div className="group-info"><div className="group-name">Group {this.props.group}</div>{users}</div>
+    )
+  }
+
   renderHeader() {
     const {firebaseUser, portalUser} = this.props
     const className = `header${this.props.isTemplate ? " template" : ""}`
@@ -249,6 +302,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
         <div className="user-info">
           <div className="user-name">{userName}</div>
         </div>
+        {this.renderGroupInfo()}
       </div>
     )
   }

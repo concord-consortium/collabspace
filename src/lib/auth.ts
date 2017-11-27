@@ -3,6 +3,8 @@ import * as queryString from "query-string"
 import * as superagent from "superagent"
 import * as jwt from "jsonwebtoken"
 
+const initials = require("initials")
+
 export interface AuthQueryParams {
   demo?: string
   token?: string
@@ -51,11 +53,16 @@ export interface PortalUserConnectionStatusMap {
 }
 
 export type PortalUser = TeacherUser | StudentUser
+export interface PortalUserMap {
+  [key: string]: PortalUser|null
+}
+
 export interface TeacherUser {
   type: "teacher"
   firstName: string
   lastName: string
   fullName: string
+  initials: string
 }
 
 export interface StudentUser {
@@ -64,6 +71,7 @@ export interface StudentUser {
   lastName: string
   fullName: string
   email: string
+  initials: string
 }
 
 export interface PortalActivity {
@@ -150,11 +158,13 @@ export const portalAuth = () => {
                     state: apiClassInfo.state,
                     classHash: apiClassInfo.class_hash,
                     teachers: apiClassInfo.teachers.map((apiTeacher) => {
+                      const fullName = `${apiTeacher.first_name} ${apiTeacher.last_name}`
                       const teacher:TeacherUser = {
                         type: "teacher",
                         firstName: apiTeacher.first_name,
                         lastName: apiTeacher.last_name,
-                        fullName: `${apiTeacher.first_name} ${apiTeacher.last_name}`
+                        fullName,
+                        initials: initials(fullName)
                       }
                       if (apiTeacher.id === jwtClaims.uid) {
                         user = teacher
@@ -162,11 +172,13 @@ export const portalAuth = () => {
                       return teacher
                     }),
                     students: apiClassInfo.students.map((apiStudent) => {
+                      const fullName = `${apiStudent.first_name} ${apiStudent.last_name}`
                       const student:StudentUser = {
                         type: "student",
                         firstName: apiStudent.first_name,
                         lastName: apiStudent.last_name,
-                        fullName: `${apiStudent.first_name} ${apiStudent.last_name}`,
+                        fullName,
+                        initials: initials(fullName),
                         email: apiStudent.email || ""
                       }
                       if (apiStudent.id === jwtClaims.uid) {

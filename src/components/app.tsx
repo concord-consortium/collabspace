@@ -187,6 +187,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
                   firebaseUser={this.state.firebaseUser}
                   document={this.state.document}
                   setTitle={null}
+                  group={this.state.group}
                   groupRef={this.state.groupRef}
                 />
               }
@@ -207,6 +208,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
                     isTemplate={true}
                     portalUser={null}
                     portalActivity={null}
+                    group={null}
                     groupRef={null}
                     firebaseUser={this.state.firebaseUser}
                     document={this.state.template}

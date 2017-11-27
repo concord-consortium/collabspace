@@ -205,6 +205,31 @@ body {
           font-size: 14px;
         }
       }
+      .group-info {
+        float: right;
+        border-left: 1px solid #fff;
+        min-height: $header-height;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .group-name {
+          margin: 0 10px;
+          font-size: 14px;
+        }
+
+        .group-user {
+          font-size: 10px;
+          margin: 0 5px;
+          padding: 5px;
+          background-color: #2da343;
+
+          &.disconnected {
+            background-color: #777;
+          }
+        }
+      }
     }
 
     .toolbar {

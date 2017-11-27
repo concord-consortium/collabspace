@@ -46,6 +46,7 @@
     "firebase-functions": "latest",
     "html-webpack-plugin": "^2.30.1",
     "iframe-phone": "^1.2.0",
+    "initials": "^2.1.5",
     "jsonwebtoken": "^8.1.0",
     "live-server": "^1.2.0",
     "live-server-https": "^0.0.2",
