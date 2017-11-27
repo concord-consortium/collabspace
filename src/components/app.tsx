@@ -14,8 +14,8 @@ export interface AppComponentProps {}
 
 export interface AppComponentState {
   firebaseUser: firebase.User|null
-  authError: string|null
-  documentError: string|null
+  authError: any|null
+  documentError: any|null
   documentId: string|null
   document: Document|null
   templateId: string|null
@@ -25,6 +25,7 @@ export interface AppComponentState {
   portalActivity: PortalActivity|null,
   groupChosen: boolean
   group: number
+  groupRef: firebase.database.Reference|null
 }
 
 export interface AppHashParams {
@@ -56,6 +57,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       portalActivity: null,
       groupChosen: false,
       group: 0,
+      groupRef: null,
       templateId: null,
       template: null
     }
@@ -82,7 +84,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
       })
     })
     .catch((error) => {
-      this.setState({authError: error.toString()})
+      this.setState({authError: error})
     })
   }
 
@@ -132,10 +134,10 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
         this.setState({groupChosen: true, group})
         if (this.state.template && this.state.portalActivity) {
           this.state.template.getGroupActivityDocument(this.state.portalActivity, group)
-            .then((document) => {
-              this.setState({document})
+            .then(([document, groupRef]) => {
+              this.setState({document, groupRef})
             })
-            .catch((documentError) => this.setState({documentError: documentError.toString()}))
+            .catch((documentError) => this.setState({documentError}))
           }
       }
     }
@@ -169,7 +171,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     const error = this.state.authError || this.state.documentError
     if (error) {
       const errorType = error === this.state.authError ? "Authorization" : "Document"
-      return this.renderFatalError(error, errorType)
+      return this.renderFatalError(error.toString(), errorType)
     }
 
     if (this.state.firebaseUser) {
@@ -184,7 +186,8 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
                   portalActivity={this.state.portalActivity}
                   firebaseUser={this.state.firebaseUser}
                   document={this.state.document}
-                  setTitle={this.setTitle}
+                  setTitle={null}
+                  groupRef={this.state.groupRef}
                 />
               }
               return this.renderProgress("Loading collaborative space group document...")
@@ -204,6 +207,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
                     isTemplate={true}
                     portalUser={null}
                     portalActivity={null}
+                    groupRef={null}
                     firebaseUser={this.state.firebaseUser}
                     document={this.state.template}
                     setTitle={this.setTitle}

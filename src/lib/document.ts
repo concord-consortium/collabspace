@@ -1,6 +1,6 @@
 import * as firebase from "firebase"
 import { FirebaseWindowMap } from "./window"
-import { PortalInfo, PortalActivity, PortalUser, PortalUserMap } from "./auth"
+import { PortalInfo, PortalActivity, PortalUser, PortalUserConnectionStatusMap } from "./auth"
 import { getUserTemplatePath, getActivityRef, getGroupDocumentPath } from "./refs"
 
 export interface FirebaseDocumentData {
@@ -33,13 +33,13 @@ export interface FirebaseActivityGroupMap {
 }
 export interface FirebaseActivityGroup {
   documentId: string
-  portalUsers: PortalUserMap
+  portalUsers: PortalUserConnectionStatusMap
   publications: FirebaseActivityGroupPublication[]
 }
 
 export interface FirebaseActivityGroupPublication {
   documentId: string
-  portalUser: PortalUser
+  portalUserEmail: string
   createdAt: number
   artifactIds: string[]
 }
@@ -167,7 +167,7 @@ export class Document {
   }
 
   getGroupActivityDocument(activity:PortalActivity, group:number) {
-    return new Promise<Document>((resolve, reject) => {
+    return new Promise<[Document, firebase.database.Reference]>((resolve, reject) => {
 
       this.getFirebaseActivity(activity)
         .then(([firebaseActivity, activityRef]) => {
@@ -179,7 +179,7 @@ export class Document {
               if (existingFirebaseGroup) {
                 const documentPath = getGroupDocumentPath(activity, existingFirebaseGroup.documentId)
                 Document.LoadDocumentFromFirebase(existingFirebaseGroup.documentId, documentPath)
-                  .then(resolve)
+                  .then((document) => resolve([document, groupRef]))
                   .catch(reject)
               }
               else {
@@ -192,9 +192,7 @@ export class Document {
                     }
                     groupRef
                       .set(firebaseGroup)
-                      .then(() => {
-                        resolve(document)
-                      })
+                      .then((document) => resolve([document, groupRef]))
                       .catch(reject)
                   })
                   .catch(reject)
@@ -219,7 +217,7 @@ export class Document {
         else {
           newRef.set(documentValue, (err) => {
             if (err) {
-              reject(err.toString())
+              reject(err)
             }
             else {
               resolve(new Document(newId, documentValue, `${newBasePath}/${newId}`))

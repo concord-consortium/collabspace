@@ -35,8 +35,19 @@ export interface PortalClassInfo {
   students: StudentUser[]
 }
 
-export interface PortalUserMap {
-  [key: string]: PortalUser
+export type PortalUserConnectionStatus = PortalUserConnected | PortalUserDisconnected
+
+export interface PortalUserConnected {
+  connected: true
+  connectedAt: number|object
+}
+export interface PortalUserDisconnected {
+  connected: false
+  disconnectedAt: number|object
+}
+
+export interface PortalUserConnectionStatusMap {
+  [key: string]: PortalUserConnectionStatus
 }
 
 export type PortalUser = TeacherUser | StudentUser
@@ -106,7 +117,7 @@ export const portalAuth = () => {
       .set("Authorization", `Bearer ${params.token}`)
       .end((err, res) => {
         if (err) {
-          reject(err.toString())
+          reject(err)
         }
         else if (!res.body || !res.body.token) {
           reject("No token found in JWT request response")
@@ -123,7 +134,7 @@ export const portalAuth = () => {
               .set("Authorization", `Bearer/JWT ${res.body.token}`)
               .end((err, res) => {
                 if (err) {
-                  reject(err.toString())
+                  reject(err)
                 }
                 else if (!res.body || !res.body.class_hash) {
                   reject("Invalid class info response")

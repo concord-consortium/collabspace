@@ -9,16 +9,18 @@ import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
 import { WindowManager, WindowManagerState, DragType } from "../lib/window-manager"
 import { v4 as uuidV4} from "uuid"
-import { PortalUser, PortalActivity } from "../lib/auth"
+import { PortalUser, PortalActivity, PortalUserConnected, PortalUserDisconnected } from "../lib/auth"
 import { AppHashParams } from "./app"
+import escapeFirebaseKey from "../lib/escape-firebase-key"
 
 export interface WorkspaceComponentProps {
   portalUser: PortalUser|null
   firebaseUser: firebase.User
   portalActivity: PortalActivity|null
   document: Document
-  setTitle: (documentName?:string|null) => void
+  setTitle: ((documentName?:string|null) => void)|null
   isTemplate: boolean
+  groupRef: firebase.database.Reference|null
 }
 export interface WorkspaceComponentState extends WindowManagerState {
   documentInfo: FirebaseDocumentInfo|null
@@ -28,6 +30,8 @@ export interface WorkspaceComponentState extends WindowManagerState {
 
 export class WorkspaceComponent extends React.Component<WorkspaceComponentProps, WorkspaceComponentState> {
   infoRef: firebase.database.Reference
+  connectedRef: firebase.database.Reference
+  userRef: firebase.database.Reference|null
   windowManager: WindowManager
 
   constructor (props:WorkspaceComponentProps) {
@@ -51,6 +55,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleAddDrawingButton = this.handleAddDrawingButton.bind(this)
     this.handleCreateDemoButton = this.handleCreateDemoButton.bind(this)
     this.handleInfoChange = this.handleInfoChange.bind(this)
+    this.handleConnected = this.handleConnected.bind(this)
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
     this.handleWindowMouseUp = this.handleWindowMouseUp.bind(this)
@@ -71,8 +76,16 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       this.setState(newState)
     })
 
+
     this.infoRef = this.props.document.ref.child("info")
     this.infoRef.on("value", this.handleInfoChange)
+
+    const {groupRef, portalUser} = this.props
+    if (groupRef && portalUser && portalUser.type === "student") {
+      this.userRef = groupRef.child("users").child(escapeFirebaseKey(portalUser.email))
+      this.connectedRef = firebase.database().ref(".info/connected")
+      this.connectedRef.on("value", this.handleConnected)
+    }
 
     window.addEventListener("mousedown", this.handleWindowMouseDown)
     window.addEventListener("mousemove", this.handleWindowMouseMove, true)
@@ -83,14 +96,30 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.windowManager.destroy()
 
     this.infoRef.off("value", this.handleInfoChange)
+    this.connectedRef.off("value", this.handleConnected)
 
     window.removeEventListener("mousedown", this.handleWindowMouseDown)
     window.removeEventListener("mousemove", this.handleWindowMouseMove, true)
     window.removeEventListener("mouseup", this.handleWindowMouseUp, true)
   }
 
+  handleConnected(snapshot:firebase.database.DataSnapshot|null) {
+    if (snapshot && snapshot.val() && this.userRef) {
+      const connected:PortalUserConnected = {
+        connected: true,
+        connectedAt: firebase.database.ServerValue.TIMESTAMP
+      }
+      const disconnected:PortalUserDisconnected = {
+        connected: false,
+        disconnectedAt: firebase.database.ServerValue.TIMESTAMP
+      }
+      this.userRef.onDisconnect().set(disconnected)
+      this.userRef.set(connected)
+    }
+  }
+
   handleInfoChange(snapshot:firebase.database.DataSnapshot|null) {
-    if (snapshot) {
+    if (snapshot && this.props.setTitle) {
       const documentInfo:FirebaseDocumentInfo|null = snapshot.val()
       this.setState({documentInfo})
       this.props.setTitle(documentInfo ? documentInfo.name : null)
@@ -203,7 +232,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     return (
       <div className="document-info">
         <div className="document-name">
-          <InlineEditorComponent text={documentInfo.name} changeText={this.changeDocumentName} />
+          {this.props.setTitle ? <InlineEditorComponent text={documentInfo.name} changeText={this.changeDocumentName} /> : documentInfo.name}
         </div>
         <div className="instance-info" title={this.state.debugInfo}>{this.state.workspaceName}</div>
       </div>
