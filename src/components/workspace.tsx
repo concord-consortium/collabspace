@@ -1,5 +1,7 @@
 import * as React from "react"
 import * as firebase from "firebase"
+import * as queryString from "query-string"
+
 import { FirebaseDocumentInfo, Document } from "../lib/document"
 import { Window, FirebaseWindowAttrs, FirebaseWindowAttrsMap } from "../lib/window"
 import { WindowComponent } from "./window"
@@ -7,17 +9,19 @@ import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
 import { WindowManager, WindowManagerState, DragType } from "../lib/window-manager"
 import { v4 as uuidV4} from "uuid"
-import { PortalInfo } from "../lib/auth"
+import { PortalUser, PortalActivity } from "../lib/auth"
+import { AppHashParams } from "./app"
 
 export interface WorkspaceComponentProps {
-  portalInfo: PortalInfo|null
+  portalUser: PortalUser|null
   firebaseUser: firebase.User
+  portalActivity: PortalActivity|null
   document: Document
   setTitle: (documentName?:string|null) => void
+  isTemplate: boolean
 }
 export interface WorkspaceComponentState extends WindowManagerState {
   documentInfo: FirebaseDocumentInfo|null
-  isTemplate: boolean
   workspaceName: string
   debugInfo: string
 }
@@ -29,16 +33,15 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   constructor (props:WorkspaceComponentProps) {
     super(props)
 
-    const {portalInfo} = props
+    const {portalActivity} = props
 
     this.state = {
       documentInfo: null,
-      isTemplate: this.props.portalInfo === null,
       allOrderedWindows: [],
       minimizedWindows: [],
       topWindow: null,
-      workspaceName: this.getWorkspaceName(portalInfo),
-      debugInfo: portalInfo ? `Class ID: ${portalInfo.classInfo.class_hash}` : ""
+      workspaceName: this.getWorkspaceName(portalActivity),
+      debugInfo: portalActivity ? `Class ID: ${portalActivity.classInfo.classHash}` : "",
     }
 
     this.changeDocumentName = this.changeDocumentName.bind(this)
@@ -51,25 +54,24 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
     this.handleWindowMouseUp = this.handleWindowMouseUp.bind(this)
-
-    this.windowManager = new WindowManager(this.props.document, (newState) => {
-      this.setState(newState)
-    })
   }
 
-  getWorkspaceName(portalInfo:PortalInfo|null) {
-    if (!portalInfo) {
+  getWorkspaceName(portalActivity:PortalActivity|null) {
+    if (!portalActivity) {
       return "Template"
     }
-    const {classInfo, isDemo} = portalInfo
-    const teacherNames = classInfo.teachers.map((teacher) => isDemo ? `${teacher.first_name} ${teacher.last_name}` : teacher.last_name)
-    const domain = isDemo ? "" : `: ${portalInfo.domain}`
+    const {classInfo, isDemo} = portalActivity
+    const teacherNames = classInfo.teachers.map((teacher) => isDemo ? teacher.fullName : teacher.lastName)
+    const domain = isDemo ? "" : `: ${portalActivity.domain}`
     return `${classInfo.name}: ${teacherNames.join(" & ")}${domain}`
   }
 
   componentWillMount() {
-    this.infoRef = this.props.document.ref.child("info")
+    this.windowManager = new WindowManager(this.props.document, (newState) => {
+      this.setState(newState)
+    })
 
+    this.infoRef = this.props.document.ref.child("info")
     this.infoRef.on("value", this.handleInfoChange)
 
     window.addEventListener("mousedown", this.handleWindowMouseDown)
@@ -78,6 +80,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   componentWillUnmount() {
+    this.windowManager.destroy()
+
     this.infoRef.off("value", this.handleInfoChange)
 
     window.removeEventListener("mousedown", this.handleWindowMouseDown)
@@ -184,11 +188,14 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   handleCreateDemoButton() {
-    window.open(`${window.location.origin}/#document=${this.props.document.getHashParam()}&demo=${uuidV4()}`)
+    const hashParams:AppHashParams = {
+      template: this.props.document.getTemplateHashParam(),
+      demo: uuidV4()
+    }
+    window.open(`${window.location.origin}/#${queryString.stringify(hashParams)}`)
   }
 
   renderDocumentInfo() {
-    const {portalInfo} = this.props
     const {documentInfo} = this.state
     if (!documentInfo) {
       return null
@@ -204,9 +211,9 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   renderHeader() {
-    const {firebaseUser, portalInfo} = this.props
-    const className = `header${this.state.isTemplate ? " template" : ""}`
-    const userName = portalInfo ? `${portalInfo.user.first_name} ${portalInfo.user.last_name}` : (firebaseUser.isAnonymous ? "Anonymous User" : firebaseUser.displayName)
+    const {firebaseUser, portalUser} = this.props
+    const className = `header${this.props.isTemplate ? " template" : ""}`
+    const userName = portalUser ? portalUser.fullName : (firebaseUser.isAnonymous ? "Anonymous User" : firebaseUser.displayName)
     return (
       <div className={className}>
         {this.renderDocumentInfo()}
@@ -227,7 +234,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
 
   renderToolbarButtons() {
     const {document} = this.props
-    const showDemoButton = this.state.isTemplate && !document.isReadonly
+    const showDemoButton = this.props.isTemplate && !document.isReadonly
     return (
       <div className="buttons">
         <div className="left-buttons">
@@ -258,7 +265,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
                isTopWindow={window === topWindow}
                zIndex={orderedWindow.order}
                windowManager={this.windowManager}
-               isTemplate={this.state.isTemplate}
+               isTemplate={this.props.isTemplate}
              />
     })
   }

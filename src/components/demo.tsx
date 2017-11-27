@@ -1,12 +1,14 @@
 import * as React from "react"
 import { Document } from "../lib/document"
 import * as firebase from "firebase"
+import { AppQueryParams, AppHashParams } from "./app"
+import * as queryString from "query-string"
 
 const demoInfo = require("../../functions/demo-info").demoInfo;
 
 export interface DemoComponentProps {
   firebaseUser: firebase.User
-  document: Document
+  template: Document
   demoId: string
 }
 
@@ -24,9 +26,20 @@ export class DemoComponent extends React.Component<DemoComponentProps, DemoCompo
   renderStudentLinks() {
     const links = []
     const hash = window.location.hash
+    const templateParam = this.props.template.getTemplateHashParam()
     for (let i=0; i < demoInfo.numStudents; i++) {
       const userId = i + 1;
-      links.push(<div key={i}><a href={`?demo=${this.props.demoId}&token=${userId}&domain=${demoInfo.rootUrl}&domain_uid=${userId}#document=${this.props.document.getHashParam()}`}>Student {userId}</a></div>)
+      const queryParams:AppQueryParams = {
+        demo: this.props.demoId,
+        token: userId,
+        domain: demoInfo.rootUrl,
+        domain_uid: userId
+      }
+      const hashParams:AppHashParams = {
+        template: templateParam
+      }
+      const url = `?${queryString.stringify(queryParams)}#${queryString.stringify(hashParams)}`
+      links.push(<div key={i}><a href={url} target="_blank">Student {userId}</a></div>)
     }
     return links
   }

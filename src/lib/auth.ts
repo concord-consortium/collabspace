@@ -10,29 +10,61 @@ export interface AuthQueryParams {
   domain_uid?: string
 }
 
-export interface PortalUser {
+export interface PortalAPIClassUser {
   id: number
   first_name: string
   last_name: string
   email?: string
 }
-export type PortalUserType = "student" | "teacher"
+
+export interface PortalAPIClassInfo {
+  uri: string
+  name: string
+  state: string
+  class_hash: string
+  teachers: PortalAPIClassUser[]
+  students: PortalAPIClassUser[]
+}
 
 export interface PortalClassInfo {
   uri: string
   name: string
   state: string
-  class_hash: string
-  teachers: PortalUser[]
-  students: PortalUser[]
+  classHash: string
+  teachers: TeacherUser[]
+  students: StudentUser[]
 }
 
-export interface PortalInfo {
-  user: PortalUser
-  userType: PortalUserType
+export interface PortalUserMap {
+  [key: string]: PortalUser
+}
+
+export type PortalUser = TeacherUser | StudentUser
+export interface TeacherUser {
+  type: "teacher"
+  firstName: string
+  lastName: string
+  fullName: string
+}
+
+export interface StudentUser {
+  type: "student"
+  firstName: string
+  lastName: string
+  fullName: string
+  email: string
+}
+
+export interface PortalActivity {
+  id: number
   domain: string
   classInfo: PortalClassInfo
   isDemo: boolean
+}
+
+export interface PortalInfo {
+  user: PortalUser|null
+  activity: PortalActivity|null
 }
 
 export interface PortalJWTClaims {
@@ -52,12 +84,12 @@ export interface PortalJWTClaims {
 }
 
 export const portalAuth = () => {
-  return new Promise<PortalInfo|null>((resolve, reject) => {
+  return new Promise<PortalInfo>((resolve, reject) => {
     const params:AuthQueryParams = queryString.parse(window.location.search)
 
     // no token means not launched from portal so there is no portal user
     if (!params.token) {
-      resolve(null)
+      resolve({user: null, activity: null})
       return
     }
 
@@ -97,24 +129,43 @@ export const portalAuth = () => {
                   reject("Invalid class info response")
                 }
                 else {
-                  const classInfo:PortalClassInfo = res.body
+                  const apiClassInfo:PortalAPIClassInfo = res.body
 
-                  // find the user in the class info
-                  let portalUser:PortalUser|null = null
-                  const findPortalUser = (user:PortalUser) => {
-                    if (user.id === jwtClaims.uid) {
-                      portalUser = user
-                    }
+                  let user:PortalUser|null = null
+
+                  const classInfo:PortalClassInfo = {
+                    uri: apiClassInfo.uri,
+                    name: apiClassInfo.name,
+                    state: apiClassInfo.state,
+                    classHash: apiClassInfo.class_hash,
+                    teachers: apiClassInfo.teachers.map((apiTeacher) => {
+                      const teacher:TeacherUser = {
+                        type: "teacher",
+                        firstName: apiTeacher.first_name,
+                        lastName: apiTeacher.last_name,
+                        fullName: `${apiTeacher.first_name} ${apiTeacher.last_name}`
+                      }
+                      if (apiTeacher.id === jwtClaims.uid) {
+                        user = teacher
+                      }
+                      return teacher
+                    }),
+                    students: apiClassInfo.students.map((apiStudent) => {
+                      const student:StudentUser = {
+                        type: "student",
+                        firstName: apiStudent.first_name,
+                        lastName: apiStudent.last_name,
+                        fullName: `${apiStudent.first_name} ${apiStudent.last_name}`,
+                        email: apiStudent.email || ""
+                      }
+                      if (apiStudent.id === jwtClaims.uid) {
+                        user = student
+                      }
+                      return student
+                    })
                   }
 
-                  let userType:PortalUserType = "student"
-                  classInfo.students.forEach(findPortalUser)
-                  if (!portalUser) {
-                    userType = "teacher"
-                    classInfo.teachers.forEach(findPortalUser)
-                  }
-
-                  if (!portalUser) {
+                  if (!user) {
                     reject("Current user not found in class roster")
                   }
                   else {
@@ -122,11 +173,13 @@ export const portalAuth = () => {
                     domainParser.href = jwtClaims.domain
 
                     resolve({
-                      user: portalUser,
-                      userType: userType,
-                      domain: isDemo ? "Demo" : domainParser.host,
-                      classInfo: classInfo,
-                      isDemo: isDemo
+                      user: user,
+                      activity: {
+                        id: jwtClaims.externalId,
+                        domain: isDemo ? "demo" : domainParser.host,
+                        classInfo: classInfo,
+                        isDemo: isDemo
+                      }
                     })
                   }
                 }

@@ -1,7 +1,11 @@
 import * as React from "react"
 import * as firebase from "firebase"
+import * as queryString from "query-string"
 import {v4 as uuidV4} from "uuid"
 import {FirebaseDocument, Document, FirebaseDocumentInfo} from "../lib/document"
+import {getUserTemplateListRef} from "../lib/refs"
+import {AppHashParams} from "./app"
+
 const timeago = require("timeago.js")
 
 const timeagoInstance = timeago()
@@ -45,12 +49,13 @@ export class DocumentCrudItemComponent extends React.Component<DocumentCrudItemC
   render() {
     const {item} = this.props
     const {info} = item
-    const href = `#document=${this.props.firebaseUser.uid}:${item.id}`
-
+    const hashParams:AppHashParams = {
+      template: Document.StringifyTemplateHashParam(this.props.firebaseUser.uid, item.id)
+    }
     return (
       <tr>
         <td className="checkbox"><input type="checkbox" checked={item.checked} onChange={this.handleChange} /></td>
-        <td><a href={href}>{info.name}</a></td>
+        <td><a href={`#${queryString.stringify(hashParams)}`}>{info.name}</a></td>
         <td>{timeagoInstance.format(info.createdAt)}</td>
       </tr>
     )
@@ -87,7 +92,7 @@ export class DocumentCrudComponent extends React.Component<DocumentCrudComponent
   }
 
   componentWillMount() {
-    this.listRef = Document.GetFirebaseListRef(this.props.firebaseUser.uid)
+    this.listRef = getUserTemplateListRef(this.props.firebaseUser.uid)
     this.listRef.on("value", this.handleDocumentList)
   }
 
@@ -117,8 +122,8 @@ export class DocumentCrudComponent extends React.Component<DocumentCrudComponent
   handleCreateDocument() {
     const {uid} = this.props.firebaseUser
     const documentId = uuidV4()
-    Document.CreateInFirebase(uid, documentId)
-      .then((document) => window.location.hash = `document=${Document.StringifyHashParam(uid, documentId)}`)
+    Document.CreateTemplateInFirebase(uid, documentId)
+      .then((document) => window.location.hash = `template=${Document.StringifyTemplateHashParam(uid, documentId)}`)
       .catch((error) => this.setState({error}))
   }
 
