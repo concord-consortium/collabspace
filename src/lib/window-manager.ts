@@ -62,6 +62,7 @@ export class WindowManager {
   syncChanges: boolean
   windowOrder: string[]
   minimizedWindowOrder: string[]
+  lastAttrsQuery: firebase.database.Query
 
   constructor (settings: WindowManagerSettings) {
     this.document = settings.document
@@ -80,6 +81,7 @@ export class WindowManager {
     }
 
     this.handleAttrsRef = this.handleAttrsRef.bind(this)
+    this.handleAttrsRefChildAdded = this.handleAttrsRefChildAdded.bind(this)
     this.handleOrderRef = this.handleOrderRef.bind(this)
     this.handleOrderChange = this.handleOrderChange.bind(this)
     this.handleMinimizedOrderRef = this.handleMinimizedOrderRef.bind(this)
@@ -99,6 +101,11 @@ export class WindowManager {
         this.minimizedOrderRef.on("value", this.handleMinimizedOrderRef)
       }
       else {
+        // listen to new windows being added
+        this.lastAttrsQuery = this.attrsRef.limitToLast(1)
+        this.lastAttrsQuery.on("child_added", this.handleAttrsRefChildAdded)
+
+        // just get the initial order
         this.orderRef.once("value", this.handleOrderRef)
         this.minimizedOrderRef.once("value", this.handleMinimizedOrderRef)
       }
@@ -111,10 +118,26 @@ export class WindowManager {
       this.orderRef.off("value", this.handleOrderRef)
       this.minimizedOrderRef.off("value", this.handleMinimizedOrderRef)
     }
+    else {
+      this.lastAttrsQuery.off("child_added", this.handleAttrsRefChildAdded)
+    }
   }
 
   notifyStateChange() {
     this.onStateChanged(this.state)
+  }
+
+  handleAttrsRefChildAdded(snapshot:firebase.database.DataSnapshot) {
+    const windowId = snapshot.key
+    const attrs:FirebaseWindowAttrs|null = snapshot.val()
+    if (windowId && !this.windows[windowId] && attrs) {
+      const window = new Window(windowId, {
+        document: this.document,
+        attrs
+      })
+      this.windows[windowId] = window
+      this.moveToTop(window)
+    }
   }
 
   handleAttrsRef(snapshot:firebase.database.DataSnapshot) {
