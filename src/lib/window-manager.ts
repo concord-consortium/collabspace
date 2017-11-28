@@ -179,10 +179,8 @@ export class WindowManager {
   // By keeping the render ordering always the same and using a separate order field
   // to set the zIndex of the window we avoid iframe reloads.
   handleOrderRef(snapshot:firebase.database.DataSnapshot) {
-    const windowOrder:string[]|null = snapshot.val()
-    if (windowOrder !== null) {
-      this.handleOrderChange(windowOrder)
-    }
+    const windowOrder:string[] = snapshot.val() || []
+    this.handleOrderChange(windowOrder)
   }
 
   handleOrderChange(windowOrder:string[]) {
@@ -209,10 +207,8 @@ export class WindowManager {
   }
 
   handleMinimizedOrderRef(snapshot:firebase.database.DataSnapshot) {
-    const minimizedWindowOrder:string[]|null = snapshot.val()
-    if (minimizedWindowOrder !== null) {
-      this.handleMinimizedOrderChange(minimizedWindowOrder)
-    }
+    const minimizedWindowOrder:string[] = snapshot.val() || []
+    this.handleMinimizedOrderChange(minimizedWindowOrder)
   }
 
   handleMinimizedOrderChange(minimizedWindowOrder:string[]) {
@@ -245,6 +241,39 @@ export class WindowManager {
     return Math.round(min + (Math.random() * (max - min)))
   }
 
+  ensureUniqueTitle(title:string) {
+    const isUniqueTitle = (title:string) => {
+      let isUnique = true
+      Object.keys(this.windows).forEach((id) => {
+        const window = this.windows[id]
+        if (window && (window.attrs.title === title)) {
+          isUnique = false
+        }
+      })
+      return isUnique
+    }
+
+    if (isUniqueTitle(title)) {
+      return title
+    }
+
+    let index = 2
+    let prefix = title
+    const endsWithNumber = / (\d+)$/
+    const matches = prefix.match(endsWithNumber)
+    if (matches) {
+      index = parseInt(matches[1], 10) + 1
+      prefix = prefix.replace(endsWithNumber, '')
+    }
+
+    let newTitle
+    do {
+      newTitle = `${prefix} ${index++}`
+    } while (!isUniqueTitle(newTitle))
+
+    return newTitle
+  }
+
   add(url: string, title:string) {
     const attrs = {
       top: this.randInRange(50, 200),
@@ -254,7 +283,7 @@ export class WindowManager {
       minimized: false,
       maximized: false,
       url,
-      title,
+      title: this.ensureUniqueTitle(title),
     }
     Window.CreateInFirebase({document: this.document, attrs})
       .then((window) => {
