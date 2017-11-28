@@ -44,6 +44,12 @@ export interface WindowManagerState {
 
 export type WindowManagerStateChangeFn = (state:WindowManagerState) => void
 
+export interface WindowManagerSettings {
+  document: Document
+  onStateChanged: WindowManagerStateChangeFn
+  syncChanges: boolean
+}
+
 export class WindowManager {
   windows: WindowMap
   document: Document
@@ -53,12 +59,19 @@ export class WindowManager {
   orderRef: firebase.database.Reference
   minimizedOrderRef: firebase.database.Reference
   dragInfo: DragInfo
+  syncChanges: boolean
+  windowOrder: string[]
+  minimizedWindowOrder: string[]
 
-  constructor (document:Document, onStateChanged: WindowManagerStateChangeFn) {
-    this.document = document
-    this.onStateChanged = onStateChanged
+  constructor (settings: WindowManagerSettings) {
+    this.document = settings.document
+    this.onStateChanged = settings.onStateChanged
+    this.syncChanges = settings.syncChanges
 
     this.windows = {}
+    this.windowOrder = []
+    this.minimizedWindowOrder = []
+
     this.dragInfo = {window: null, type: DragType.None}
     this.state = {
       allOrderedWindows: [],
@@ -66,35 +79,45 @@ export class WindowManager {
       topWindow: null
     }
 
-    this.handleAttrsChange = this.handleAttrsChange.bind(this)
+    this.handleAttrsRef = this.handleAttrsRef.bind(this)
+    this.handleOrderRef = this.handleOrderRef.bind(this)
     this.handleOrderChange = this.handleOrderChange.bind(this)
+    this.handleMinimizedOrderRef = this.handleMinimizedOrderRef.bind(this)
     this.handleMinimizedOrderChange = this.handleMinimizedOrderChange.bind(this)
 
-    this.attrsRef = document.getWindowsDataRef("attrs")
-    this.orderRef = document.getWindowsDataRef("order")
-    this.minimizedOrderRef = document.getWindowsDataRef("minimizedOrder")
+    this.attrsRef = this.document.getWindowsDataRef("attrs")
+    this.orderRef = this.document.getWindowsDataRef("order")
+    this.minimizedOrderRef = this.document.getWindowsDataRef("minimizedOrder")
 
     // make sure the windows map is populated before checking the ordering
     this.attrsRef.once("value", (snapshot) => {
-      this.handleAttrsChange(snapshot)
+      this.handleAttrsRef(snapshot)
 
-      this.attrsRef.on("value", this.handleAttrsChange)
-      this.orderRef.on("value", this.handleOrderChange)
-      this.minimizedOrderRef.on("value", this.handleMinimizedOrderChange)
+      if (this.syncChanges) {
+        this.attrsRef.on("value", this.handleAttrsRef)
+        this.orderRef.on("value", this.handleOrderRef)
+        this.minimizedOrderRef.on("value", this.handleMinimizedOrderRef)
+      }
+      else {
+        this.orderRef.once("value", this.handleOrderRef)
+        this.minimizedOrderRef.once("value", this.handleMinimizedOrderRef)
+      }
     })
   }
 
   destroy() {
-    this.attrsRef.off("value", this.handleAttrsChange)
-    this.orderRef.off("value", this.handleOrderChange)
-    this.minimizedOrderRef.off("value", this.handleMinimizedOrderChange)
+    if (this.syncChanges) {
+      this.attrsRef.off("value", this.handleAttrsRef)
+      this.orderRef.off("value", this.handleOrderRef)
+      this.minimizedOrderRef.off("value", this.handleMinimizedOrderRef)
+    }
   }
 
   notifyStateChange() {
     this.onStateChanged(this.state)
   }
 
-  handleAttrsChange(snapshot:firebase.database.DataSnapshot) {
+  handleAttrsRef(snapshot:firebase.database.DataSnapshot) {
     const attrsMap:FirebaseWindowAttrsMap|null = snapshot.val()
     const updatedWindows:WindowMap = {}
 
@@ -132,43 +155,53 @@ export class WindowManager {
   // iframe element in the DOM on a re-render which causes the iframe to reload.
   // By keeping the render ordering always the same and using a separate order field
   // to set the zIndex of the window we avoid iframe reloads.
-  handleOrderChange(snapshot:firebase.database.DataSnapshot) {
+  handleOrderRef(snapshot:firebase.database.DataSnapshot) {
+    const windowOrder:string[]|null = snapshot.val()
+    if (windowOrder !== null) {
+      this.handleOrderChange(windowOrder)
+    }
+  }
+
+  handleOrderChange(windowOrder:string[]) {
+    this.windowOrder = windowOrder
     this.state.allOrderedWindows = []
     this.state.topWindow = null
 
     let topOrder = 0
-    const windowOrder:string[]|null = snapshot.val()
-    if (windowOrder !== null) {
-      Object.keys(this.windows).forEach((id) => {
-        const window = this.windows[id]
-        const order = windowOrder.indexOf(id)
-        if (window && (order !== -1)) {
-          this.state.allOrderedWindows.push({order, window})
-          if (!window.attrs.minimized) {
-            if (!this.state.topWindow || (order > topOrder)) {
-              this.state.topWindow = window
-              topOrder = order
-            }
+    Object.keys(this.windows).forEach((id) => {
+      const window = this.windows[id]
+      const order = windowOrder.indexOf(id)
+      if (window && (order !== -1)) {
+        this.state.allOrderedWindows.push({order, window})
+        if (!window.attrs.minimized) {
+          if (!this.state.topWindow || (order > topOrder)) {
+            this.state.topWindow = window
+            topOrder = order
           }
         }
-      })
-    }
+      }
+    })
 
     this.notifyStateChange()
   }
 
-  handleMinimizedOrderChange(snapshot:firebase.database.DataSnapshot) {
-    this.state.minimizedWindows = []
-
+  handleMinimizedOrderRef(snapshot:firebase.database.DataSnapshot) {
     const minimizedWindowOrder:string[]|null = snapshot.val()
     if (minimizedWindowOrder !== null) {
-      minimizedWindowOrder.forEach((id) => {
-        const window = this.windows[id]
-        if (window) {
-          this.state.minimizedWindows.push(window)
-        }
-      })
+      this.handleMinimizedOrderChange(minimizedWindowOrder)
     }
+  }
+
+  handleMinimizedOrderChange(minimizedWindowOrder:string[]) {
+    this.minimizedWindowOrder = minimizedWindowOrder
+    this.state.minimizedWindows = []
+
+    minimizedWindowOrder.forEach((id) => {
+      const window = this.windows[id]
+      if (window) {
+        this.state.minimizedWindows.push(window)
+      }
+    })
 
     this.notifyStateChange()
   }
@@ -181,7 +214,7 @@ export class WindowManager {
   updateDragWindow(attrs: FirebaseWindowAttrs) {
     const {window} = this.dragInfo
     if (window) {
-      window.setAttrs(attrs)
+      window.setAttrs(attrs, this.syncChanges)
     }
   }
 
@@ -202,35 +235,58 @@ export class WindowManager {
     }
     Window.CreateInFirebase({document: this.document, attrs})
       .then((window) => {
-        this.moveToTop(window)
+        this.moveToTop(window, true)
       })
       .catch((err) => {})
   }
 
-  moveToTop(window:Window) {
-    this.orderRef.once("value", (snapshot) => {
-      const order:string[] = snapshot.val() || []
+  moveToTop(window:Window, forceSync:boolean = false) {
+    const moveToTopInOrder = (order:string[]) => {
       const index = order.indexOf(window.id)
       if (index !== -1) {
         order.splice(index, 1)
       }
       order.push(window.id)
-      this.orderRef.set(order)
-    })
+    }
+
+    if (this.syncChanges || forceSync) {
+      this.orderRef.once("value", (snapshot) => {
+        const order:string[] = snapshot.val() || []
+        moveToTopInOrder(order)
+        this.orderRef.set(order)
+      })
+    }
+    else {
+      moveToTopInOrder(this.windowOrder)
+      this.handleOrderChange(this.windowOrder)
+    }
   }
 
   close(window:Window) {
-    this.orderRef.once("value", (snapshot) => {
-      const order:string[] = snapshot.val() || []
+    const removeFromOrder = (order:string[]) => {
       const index = order.indexOf(window.id)
       if (index !== -1) {
         order.splice(index, 1)
       }
-      this.orderRef.set(order, () => {
-        window.close()
-        delete this.windows[window.id]
+    }
+
+    const afterRemoving = () => {
+      window.close()
+      delete this.windows[window.id]
+    }
+
+    if (this.syncChanges) {
+      this.orderRef.once("value", (snapshot) => {
+        const order:string[] = snapshot.val() || []
+        removeFromOrder(order)
+        this.orderRef.set(order, afterRemoving)
       })
-    })
+    }
+    else {
+      removeFromOrder(this.windowOrder)
+      this.handleOrderChange(this.windowOrder)
+      afterRemoving()
+    }
   }
 
   restoreMinimized(window:Window) {
@@ -242,10 +298,9 @@ export class WindowManager {
     const {attrs} = window
     attrs.maximized = maximized
     attrs.minimized = minimized
-    window.setAttrs(attrs)
+    window.setAttrs(attrs, this.syncChanges)
 
-    this.minimizedOrderRef.once("value", (snapshot) => {
-      const minimizedOrder:string[] = snapshot.val() || []
+    const toggleMinimized = (minimizedOrder:string[]) => {
       const index = minimizedOrder.indexOf(window.id)
       if (!minimized && (index !== -1)) {
         minimizedOrder.splice(index, 1)
@@ -253,14 +308,25 @@ export class WindowManager {
       else if (minimized && (index === -1)) {
         minimizedOrder.push(window.id)
       }
-      this.minimizedOrderRef.set(minimizedOrder)
-    })
+    }
+
+    if (this.syncChanges) {
+      this.minimizedOrderRef.once("value", (snapshot) => {
+        const minimizedOrder:string[] = snapshot.val() || []
+        toggleMinimized(minimizedOrder)
+        this.minimizedOrderRef.set(minimizedOrder)
+      })
+    }
+    else {
+      toggleMinimized(this.minimizedWindowOrder)
+      this.handleMinimizedOrderChange(this.minimizedWindowOrder)
+    }
   }
 
   changeTitle(window:Window, newTitle:string) {
     const {attrs} = window
     attrs.title = newTitle
-    window.setAttrs(attrs)
+    window.setAttrs(attrs, this.syncChanges)
   }
 
   windowLoaded(window:Window, element:HTMLIFrameElement) {

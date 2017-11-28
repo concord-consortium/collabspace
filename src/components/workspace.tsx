@@ -89,8 +89,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   componentWillMount() {
-    this.windowManager = new WindowManager(this.props.document, (newState) => {
-      this.setState(newState)
+    this.windowManager = new WindowManager({
+      document: this.props.document,
+      onStateChanged: (newState) => this.setState(newState),
+      syncChanges: this.props.isTemplate
     })
 
     this.infoRef = this.props.document.ref.child("info")
