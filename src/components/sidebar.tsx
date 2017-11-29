@@ -1,0 +1,330 @@
+import * as React from "react"
+import * as firebase from "firebase"
+import { Window } from "../lib/window"
+import { WindowManager } from "../lib/window-manager"
+import { PortalActivity, PortalUser, PortalUserMap } from "../lib/auth"
+import { getPublicationsRef, getArtifactsRef } from "../lib/refs"
+import { FirebasePublication, FirebasePublicationWindow, FirebaseArtifact } from "../lib/document"
+
+const timeago = require("timeago.js")
+const timeagoInstance = timeago()
+
+export interface FirebasePublicationItem {
+  id: string
+  publication: FirebasePublication
+}
+
+export interface FirebaseArtifactItem {
+  id: string
+  artifact: FirebaseArtifact
+}
+
+export interface SidebarPublicationArtifactComponentProps {
+  artifact: FirebaseArtifact
+  toggleViewArtifact: (artifact: FirebaseArtifact) => void
+}
+export interface SidebarPublicationArtifactComponentState {
+}
+
+export class SidebarPublicationArtifactComponent extends React.Component<SidebarPublicationArtifactComponentProps, SidebarPublicationArtifactComponentState> {
+  publicationsRef: firebase.database.Reference
+
+  constructor (props:SidebarPublicationArtifactComponentProps) {
+    super(props)
+    this.state = {}
+    this.toggleViewArtifact = this.toggleViewArtifact.bind(this)
+  }
+
+  toggleViewArtifact() {
+    this.props.toggleViewArtifact(this.props.artifact)
+  }
+
+  render() {
+    const {artifact} = this.props
+    return (
+      <div className="artifact" onClick={this.toggleViewArtifact}>
+        <img src={artifact.url} title={artifact.title} />
+      </div>
+    )
+  }
+}
+
+export interface SidebarPublicationWindowComponentProps {
+  windowId: string
+  publicationId: string
+  window: FirebasePublicationWindow
+  toggleViewArtifact: (artifact: FirebaseArtifact) => void
+  portalActivity: PortalActivity
+}
+export interface SidebarPublicationWindowComponentState {
+  artifactItems: FirebaseArtifactItem[]
+}
+
+export class SidebarPublicationWindowComponent extends React.Component<SidebarPublicationWindowComponentProps, SidebarPublicationWindowComponentState> {
+  artifactsRef: firebase.database.Reference
+
+  constructor (props:SidebarPublicationWindowComponentProps) {
+    super(props)
+    this.state = {
+      artifactItems: []
+    }
+    this.artifactsRef = getPublicationsRef(this.props.portalActivity, this.props.publicationId).child("windows").child(this.props.windowId).child("artifacts")
+    this.handleArtifactAdded = this.handleArtifactAdded.bind(this)
+  }
+
+  componentWillMount() {
+    this.artifactsRef.on("child_added", this.handleArtifactAdded)
+  }
+
+  componentWillUnmount() {
+    this.artifactsRef.off("child_added", this.handleArtifactAdded)
+  }
+
+  handleArtifactAdded(snapshot:firebase.database.DataSnapshot) {
+    // we have to listen for added artifacts as the user might click on the published item
+    // before the artifact is created and we only listen for publication child_added not value
+    const artifact:FirebaseArtifact = snapshot.val()
+    const {artifactItems} = this.state
+    artifactItems.push({id: snapshot.key as string, artifact})
+    this.setState({artifactItems})
+  }
+
+  renderArtifacts() {
+    const {artifactItems} = this.state
+    if (artifactItems.length === 0) {
+      return null
+    }
+    return (
+      <div className="artifacts">
+        {artifactItems.map((artifactItem) => {
+          return <SidebarPublicationArtifactComponent
+                   key={artifactItem.id}
+                   artifact={artifactItem.artifact}
+                   toggleViewArtifact={this.props.toggleViewArtifact}
+                 />
+        })}
+      </div>
+    )
+  }
+
+  render() {
+    return (
+      <div className="window">
+        <div className="window-title">{this.props.window.title}</div>
+        {this.renderArtifacts()}
+        <div className="window-actions">
+          Copy Into Your Document
+        </div>
+      </div>
+    )
+  }
+}
+
+export interface SidebarPublicationComponentProps {
+  publicationItem: FirebasePublicationItem
+  userMap: PortalUserMap
+  toggleViewArtifact: (artifact: FirebaseArtifact) => void
+  portalActivity: PortalActivity
+}
+export interface SidebarPublicationComponentState {
+  expanded: boolean
+}
+
+export class SidebarPublicationComponent extends React.Component<SidebarPublicationComponentProps, SidebarPublicationComponentState> {
+  publicationsRef: firebase.database.Reference
+
+  constructor (props:SidebarPublicationComponentProps) {
+    super(props)
+    this.state = {
+      expanded: false
+    }
+    this.handleToggle = this.handleToggle.bind(this)
+  }
+
+  handleToggle() {
+    this.setState({expanded: !this.state.expanded})
+  }
+
+  renderWindows() {
+    const {publicationItem} = this.props
+    const {publication} = publicationItem
+    const windowIds = Object.keys(publication.windows)
+
+    if (windowIds.length === 0) {
+      return null
+    }
+
+    return (
+      <div className="windows">
+        {windowIds.map((windowId) => {
+          const window = publication.windows[windowId]
+          return <SidebarPublicationWindowComponent
+                   key={windowId}
+                   publicationId={publicationItem.id}
+                   windowId={windowId}
+                   window={window}
+                   toggleViewArtifact={this.props.toggleViewArtifact}
+                   portalActivity={this.props.portalActivity}
+                 />
+        })}
+      </div>
+    )
+  }
+
+  renderExpanded() {
+    const {publication} = this.props.publicationItem
+    const user = this.props.userMap[publication.portalUserEmail]
+    const name = user ? user.fullName : "Unknown Student"
+    return (
+      <div className="expanded-info">
+        <div className="user-name">{name}</div>
+        View In Dashboard
+        {this.renderWindows()}
+      </div>
+    )
+  }
+
+  render() {
+    const {publicationItem} = this.props
+    const {publication} = publicationItem
+    const {group, createdAt} = publication
+    const user = this.props.userMap[publication.portalUserEmail]
+    const name = user ? user.fullName : "Unknown Student"
+    const initials = user ? user.initials : "?"
+    return (
+      <div className="publication">
+        <div  className="publication-header" onClick={this.handleToggle}>
+          <span className="initials" title={name}>{initials}</span> in group {group} <span className="ago">{timeagoInstance.format(createdAt)}</span>
+        </div>
+        {this.state.expanded ? this.renderExpanded() : null}
+      </div>
+    )
+  }
+}
+
+export interface SidebarComponentProps {
+  portalActivity: PortalActivity
+  portalUser: PortalUser
+  group: number
+  toggleViewArtifact: (artifact: FirebaseArtifact) => void
+  publishing: boolean
+}
+export interface SidebarComponentState {
+  publicationItems: FirebasePublicationItem[]
+  filter: "activity" | "group" | "mine"
+}
+
+export class SidebarComponent extends React.Component<SidebarComponentProps, SidebarComponentState> {
+  publicationsRef: firebase.database.Reference
+  userMap: PortalUserMap
+
+  constructor (props:SidebarComponentProps) {
+    super(props)
+    this.state = {
+      publicationItems: [],
+      filter: "activity"
+    }
+    this.publicationsRef = getPublicationsRef(this.props.portalActivity)
+    this.handlePublicationAdded = this.handlePublicationAdded.bind(this)
+
+    this.userMap = {}
+    this.props.portalActivity.classInfo.students.forEach((student) => {
+      this.userMap[student.email] = student
+    })
+  }
+
+  componentWillMount() {
+    this.publicationsRef.on("child_added", this.handlePublicationAdded)
+  }
+
+  componentWillUnmount() {
+    this.publicationsRef.off("child_added", this.handlePublicationAdded)
+  }
+
+  handlePublicationAdded(snapshot:firebase.database.DataSnapshot) {
+    const {publicationItems} = this.state
+    const publication:FirebasePublication = snapshot.val()
+    const publicationItem:FirebasePublicationItem = {
+      id: snapshot.key as string,
+      publication
+    }
+    publicationItems.unshift(publicationItem)
+    this.setState({publicationItems})
+  }
+
+  getFilteredPublicationItems() {
+    const {publicationItems, filter} = this.state
+    const {portalActivity, portalUser, group} = this.props
+    const email = portalUser.type === "student" ? portalUser.email : ""
+    return publicationItems.filter((publicationItem) => {
+      const {publication} = publicationItem
+      if (publication.activityId !== portalActivity.id) {
+        return false
+      }
+      switch (filter) {
+        case "group":
+          return publication.group === group
+        case "mine":
+          return publication.portalUserEmail === email
+        default:
+          return true
+      }
+    })
+  }
+
+  renderFilterSelector() {
+    const className = (filter:string) => {
+      return filter === this.state.filter ? "selected-filter" : ""
+    }
+    return (
+      <div className="filter-selector">
+        <span className={className("activity")} onClick={() => this.setState({filter: "activity"})}>Activity</span>
+        <span className={className("group")} onClick={() => this.setState({filter: "group"})}>Group</span>
+        <span className={className("mine")} onClick={() => this.setState({filter: "mine"})}>Mine</span>
+      </div>
+    )
+  }
+
+  renderPublishing() {
+    if (!this.props.publishing) {
+      return null
+    }
+    return (
+      <div className="publishing">
+        <div className="progress">Publishing</div>
+      </div>
+    )
+  }
+
+  renderPublications() {
+    const publicationItems = this.getFilteredPublicationItems()
+    if (publicationItems.length === 0) {
+      return <div className="none-found">No publications were found</div>
+    }
+
+    return (
+      <div className="publications">
+        {publicationItems.map((publicationItem) => {
+          return <SidebarPublicationComponent
+                   key={publicationItem.id}
+                   publicationItem={publicationItem}
+                   userMap={this.userMap}
+                   toggleViewArtifact={this.props.toggleViewArtifact}
+                   portalActivity={this.props.portalActivity}
+                 />
+        })}
+      </div>
+    )
+  }
+
+  render() {
+    return (
+      <div className="sidebar">
+        <div className="sidebar-header">Publications</div>
+        {this.renderFilterSelector()}
+        {this.renderPublishing()}
+        {this.renderPublications()}
+      </div>
+    )
+  }
+}

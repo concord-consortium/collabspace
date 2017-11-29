@@ -7,6 +7,7 @@ import { Window, FirebaseWindowAttrs, FirebaseWindowAttrsMap } from "../lib/wind
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
 import { InlineEditorComponent } from "./inline-editor"
+import { SidebarComponent } from "./sidebar"
 import { WindowManager, WindowManagerState, DragType } from "../lib/window-manager"
 import { v4 as uuidV4} from "uuid"
 import { PortalUser, PortalUserMap, PortalActivity, PortalUserConnectionStatusMap, PortalUserConnected, PortalUserDisconnected } from "../lib/auth"
@@ -34,6 +35,8 @@ export interface WorkspaceComponentState extends WindowManagerState {
   debugInfo: string
   groupUsers: PortalUserConnectionStatusMap|null
   classUserLookup: PortalUserMap
+  viewArtifact: FirebaseArtifact|null
+  publishing: boolean
 }
 
 export class WorkspaceComponent extends React.Component<WorkspaceComponentProps, WorkspaceComponentState> {
@@ -63,10 +66,14 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       workspaceName: this.getWorkspaceName(portalActivity),
       debugInfo: portalActivity ? `Class ID: ${portalActivity.classInfo.classHash}` : "",
       groupUsers: null,
-      classUserLookup: classUserLookup
+      classUserLookup: classUserLookup,
+      viewArtifact: null,
+      publishing: false
     }
 
     this.changeDocumentName = this.changeDocumentName.bind(this)
+    this.toggleViewArtifact = this.toggleViewArtifact.bind(this)
+    this.clearViewArtifact = this.clearViewArtifact.bind(this)
 
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
@@ -128,6 +135,14 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     window.removeEventListener("mousedown", this.handleWindowMouseDown)
     window.removeEventListener("mousemove", this.handleWindowMouseMove, true)
     window.removeEventListener("mouseup", this.handleWindowMouseUp, true)
+  }
+
+  toggleViewArtifact(artifact: FirebaseArtifact) {
+    this.setState({viewArtifact: artifact === this.state.viewArtifact ? null : artifact})
+  }
+
+  clearViewArtifact() {
+    this.setState({viewArtifact: null})
   }
 
   handleConnected(snapshot:firebase.database.DataSnapshot|null) {
@@ -266,6 +281,15 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       return
     }
 
+    const donePublishing = (err?:any) => {
+      this.setState({publishing: false})
+      if (err) {
+        alert(err.toString())
+      }
+    }
+
+    this.setState({publishing: true})
+
     // copy the doc
     this.props.document.copy(getDocumentPath(portalActivity))
       .then((document) => {
@@ -278,7 +302,10 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             Object.keys(attrsMap).forEach((windowId) => {
               const attrs = attrsMap[windowId]
               if (attrs) {
-                windows[windowId] = {title: attrs.title}
+                windows[windowId] = {
+                  title: attrs.title,
+                  artifacts: {}
+                }
               }
             })
 
@@ -299,7 +326,6 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
               // and finally tell all the child windows so they can generate artifacts
               const publishRequest:CollabSpaceClientPublishRequest = {
                 publicationsPath: getPublicationsPath(portalActivity, publicationId),
-                artifactsPath: getArtifactsPath(portalActivity),
                 artifactStoragePath: getArtifactsStoragePath(portalActivity, publicationId)
               }
               this.windowManager.postToAllWindows(
@@ -307,12 +333,12 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
                 publishRequest
               )
             }
+
+            donePublishing()
           })
-          .catch((err) => alert(err.toString()))
+          .catch(donePublishing)
       })
-      .catch((err) => {
-        alert(`Cannot create document: ${err.toString()}`)
-      })
+      .catch(donePublishing)
   }
 
   renderDocumentInfo() {
@@ -386,7 +412,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
         </div>
         <div className="right-buttons">
           {showDemoButton ? <button type="button" onClick={this.handleCreateDemoButton}>Create Demo</button> : null}
-          {showPublishButton ? <button type="button" onClick={this.handlePublishButton}>Publish</button> : null}
+          {showPublishButton ? <button type="button" disabled={this.state.publishing} onClick={this.handlePublishButton}>Publish</button> : null}
         </div>
       </div>
     )
@@ -431,9 +457,9 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   renderWindowArea() {
     const hasMinmizedWindows = this.state.minimizedWindows.length > 0
     const nonMinimizedClassName = `non-minimized${hasMinmizedWindows ? " with-minimized" : ""}`
-
+    const className = `window-area${!this.props.isTemplate ? " with-sidebar" : ""}`
     return (
-      <div className="window-area">
+      <div className={className}>
         <div className={nonMinimizedClassName}>
           {this.renderAllWindows()}
         </div>
@@ -449,12 +475,44 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     return null
   }
 
+  renderSidebarComponent() {
+    const {portalActivity, portalUser, group} = this.props
+    if (!portalActivity || !portalUser || !group) {
+      return null
+    }
+    return <SidebarComponent
+             portalActivity={portalActivity}
+             portalUser={portalUser}
+             group={group}
+             toggleViewArtifact={this.toggleViewArtifact}
+             publishing={this.state.publishing}
+           />
+  }
+
+  renderArtifact() {
+    if (!this.state.viewArtifact) {
+      return null
+    }
+    return (
+      <div className="image-lightbox" onClick={this.clearViewArtifact}>
+        <div className="image-lightbox-background" />
+        <div className="image-lightbox-image">
+          <div>
+            <img src={this.state.viewArtifact.url} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   render() {
     return (
       <div className="workspace" onDrop={this.handleDrop} onDragOver={this.handleDragOver}>
         {this.renderHeader()}
         {this.renderToolbar()}
         {this.renderWindowArea()}
+        {this.renderSidebarComponent()}
+        {this.renderArtifact()}
         {this.renderReadonlyBlocker()}
       </div>
     )

@@ -36,11 +36,8 @@ export interface FirebaseActivityGroup {
   portalUsers: PortalUserConnectionStatusMap
 }
 
-export interface FirebasePublicationWindow {
-  title:string
-}
-export interface FirebasePublicationWindowMap {
-  [key: string]: FirebasePublicationWindow
+export interface FirebaseArtifactMap {
+  [key: string]: FirebaseArtifact
 }
 
 export interface FirebasePublication {
@@ -57,6 +54,16 @@ export interface FirebaseArtifact {
   mimeType: string
   url: string
 }
+
+export interface FirebasePublicationWindow {
+  title:string
+  artifacts: FirebaseArtifactMap
+}
+
+export interface FirebasePublicationWindowMap {
+  [key: string]: FirebasePublicationWindow
+}
+
 
 export class Document {
 

@@ -56,7 +56,6 @@ export interface CollabSpaceClientInitResponse {
 
 export interface CollabSpaceClientPublishRequest {
   publicationsPath: string
-  artifactsPath: string
   artifactStoragePath: string
 }
 
@@ -69,6 +68,7 @@ export interface CollabSpaceClientConfig {
 }
 
 export class CollabSpaceClient {
+  windowId: string
   config: CollabSpaceClientConfig
   phone: IFramePhoneChild
   dataRef: firebase.database.Reference
@@ -82,6 +82,7 @@ export class CollabSpaceClient {
   }
 
   clientInit(req:CollabSpaceClientInitRequest) {
+    this.windowId = req.id
     firebase.initializeApp(req.firebase.config)
     this.dataRef = firebase.database().ref(req.firebase.dataPath)
 
@@ -92,7 +93,7 @@ export class CollabSpaceClient {
   }
 
   clientPublish(req:CollabSpaceClientPublishRequest) {
-    const publication = new CollabSpaceClientPublication(req)
+    const publication = new CollabSpaceClientPublication(this, req)
     const resp = this.config.publish(publication)
     Promise.resolve(resp).then((resp) => {
       this.phone.post(CollabSpaceClientPublishResponseMessage, resp)
@@ -105,9 +106,9 @@ export class CollabSpaceClientPublication {
   artifactsRef: firebase.database.Reference
   artifactsStoragePath: string
 
-  constructor (req:CollabSpaceClientPublishRequest) {
+  constructor (client: CollabSpaceClient, req:CollabSpaceClientPublishRequest) {
     this.publicationsRef = firebase.database().ref(req.publicationsPath)
-    this.artifactsRef = firebase.database().ref(req.artifactsPath)
+    this.artifactsRef = this.publicationsRef.child("windows").child(client.windowId).child("artifacts")
     this.artifactsStoragePath = req.artifactStoragePath
   }
 
@@ -124,7 +125,7 @@ export class CollabSpaceClientPublication {
         .then((snapshot) => storageRef.getDownloadURL())
         .then((url) => {
           const artifact:FirebaseArtifact = {title, mimeType, url}
-          this.artifactsRef.push(artifact)
+          const artifactRef = this.artifactsRef.push(artifact)
           resolve(artifact)
         })
         .catch(reject)
