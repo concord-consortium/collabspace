@@ -1,5 +1,8 @@
 import { FirebaseConfig } from "./firebase-config"
-import * as firebase from "firebase";
+import { FirebaseArtifact, FirebasePublication } from "./document"
+import * as firebase from "firebase"
+import { v4 as uuidV4 } from "uuid"
+import { PortalActivity, PortalUser } from "./auth";
 
 const IFramePhoneFactory:IFramePhoneLib = require("iframe-phone")
 
@@ -32,8 +35,12 @@ export interface IFramePhoneParent {
   targetOrigin: string
 }
 
+
 export const CollabSpaceClientInitRequestMessage = "CollabSpaceClientInitRequest"
 export const CollabSpaceClientInitResponseMessage = "CollabSpaceClientInitResponse"
+
+export const CollabSpaceClientPublishRequestMessage = "CollabSpaceClientPublishRequest"
+export const CollabSpaceClientPublishResponseMessage = "CollabSpaceClientPublishResponse"
 
 export interface CollabSpaceClientInitRequest {
   version: string
@@ -47,8 +54,18 @@ export interface CollabSpaceClientInitRequest {
 export interface CollabSpaceClientInitResponse {
 }
 
+export interface CollabSpaceClientPublishRequest {
+  publicationsPath: string
+  artifactsPath: string
+  artifactStoragePath: string
+}
+
+export interface CollabSpaceClientPublishResponse {
+}
+
 export interface CollabSpaceClientConfig {
   init(req: CollabSpaceClientInitRequest): CollabSpaceClientInitResponse|Promise<CollabSpaceClientInitResponse>
+  publish(publication: CollabSpaceClientPublication): CollabSpaceClientPublishResponse|Promise<CollabSpaceClientPublishResponse>
 }
 
 export class CollabSpaceClient {
@@ -60,6 +77,7 @@ export class CollabSpaceClient {
     this.config = config
     this.phone = IFramePhoneFactory.getIFrameEndpoint()
     this.phone.addListener(CollabSpaceClientInitRequestMessage, this.clientInit.bind(this))
+    this.phone.addListener(CollabSpaceClientPublishRequestMessage, this.clientPublish.bind(this))
     this.phone.initialize()
   }
 
@@ -70,6 +88,46 @@ export class CollabSpaceClient {
     const resp = this.config.init(req)
     Promise.resolve(resp).then((resp) => {
       this.phone.post(CollabSpaceClientInitResponseMessage, resp)
+    })
+  }
+
+  clientPublish(req:CollabSpaceClientPublishRequest) {
+    const publication = new CollabSpaceClientPublication(req)
+    const resp = this.config.publish(publication)
+    Promise.resolve(resp).then((resp) => {
+      this.phone.post(CollabSpaceClientPublishResponseMessage, resp)
+    })
+  }
+}
+
+export class CollabSpaceClientPublication {
+  publicationsRef: firebase.database.Reference
+  artifactsRef: firebase.database.Reference
+  artifactsStoragePath: string
+
+  constructor (req:CollabSpaceClientPublishRequest) {
+    this.publicationsRef = firebase.database().ref(req.publicationsPath)
+    this.artifactsRef = firebase.database().ref(req.artifactsPath)
+    this.artifactsStoragePath = req.artifactStoragePath
+  }
+
+  saveArtifactBlob(title: string, blob:Blob, mimeType:string, extension?:string) {
+    return new Promise<FirebaseArtifact>((resolve, reject) => {
+      if (!extension) {
+        const parts = mimeType.split("/")
+        extension = parts[parts.length - 1]
+      }
+      const storagePath:string = `${this.artifactsStoragePath}/${uuidV4()}.${extension}`
+      const storageRef = firebase.storage().ref(storagePath)
+      storageRef
+        .put(blob, {contentType: mimeType})
+        .then((snapshot) => storageRef.getDownloadURL())
+        .then((url) => {
+          const artifact:FirebaseArtifact = {title, mimeType, url}
+          this.artifactsRef.push(artifact)
+          resolve(artifact)
+        })
+        .catch(reject)
     })
   }
 }

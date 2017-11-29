@@ -2,7 +2,7 @@ import * as React from "react"
 import * as firebase from "firebase"
 import * as queryString from "query-string"
 
-import { FirebaseDocumentInfo, Document } from "../lib/document"
+import { FirebaseDocumentInfo, Document, FirebasePublication, FirebaseArtifact, FirebasePublicationWindowMap } from "../lib/document"
 import { Window, FirebaseWindowAttrs, FirebaseWindowAttrsMap } from "../lib/window"
 import { WindowComponent } from "./window"
 import { MinimizedWindowComponent } from "./minimized-window"
@@ -12,6 +12,8 @@ import { v4 as uuidV4} from "uuid"
 import { PortalUser, PortalUserMap, PortalActivity, PortalUserConnectionStatusMap, PortalUserConnected, PortalUserDisconnected } from "../lib/auth"
 import { AppHashParams } from "./app"
 import escapeFirebaseKey from "../lib/escape-firebase-key"
+import { getDocumentPath, getPublicationsRef, getArtifactsPath, getPublicationsPath, getArtifactsStoragePath } from "../lib/refs"
+import { CollabSpaceClientPublishRequest, CollabSpaceClientPublishRequestMessage } from "../lib/collabspace-client"
 
 const timeago = require("timeago.js")
 const timeagoInstance = timeago()
@@ -76,6 +78,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.handleWindowMouseDown = this.handleWindowMouseDown.bind(this)
     this.handleWindowMouseMove = this.handleWindowMouseMove.bind(this)
     this.handleWindowMouseUp = this.handleWindowMouseUp.bind(this)
+    this.handlePublishButton = this.handlePublishButton.bind(this)
   }
 
   getWorkspaceName(portalActivity:PortalActivity|null) {
@@ -257,6 +260,61 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     window.open(`${window.location.origin}/#${queryString.stringify(hashParams)}`)
   }
 
+  handlePublishButton() {
+    const {portalActivity, portalUser, groupRef, group} = this.props
+    if (!portalActivity || !portalUser || (portalUser.type === "teacher") || !groupRef || !group) {
+      return
+    }
+
+    // copy the doc
+    this.props.document.copy(getDocumentPath(portalActivity))
+      .then((document) => {
+
+        // open the doc to get the windows
+        document.dataRef.child("windows/attrs").once("value")
+          .then((snapshot) => {
+            const attrsMap:FirebaseWindowAttrsMap = snapshot.val() || {}
+            const windows:FirebasePublicationWindowMap = {}
+            Object.keys(attrsMap).forEach((windowId) => {
+              const attrs = attrsMap[windowId]
+              if (attrs) {
+                windows[windowId] = {title: attrs.title}
+              }
+            })
+
+            // then create the publication
+            const publication:FirebasePublication = {
+              activityId: portalActivity.id,
+              group: group,
+              portalUserEmail: portalUser.email,
+              createdAt: firebase.database.ServerValue.TIMESTAMP,
+              documentId: document.id,
+              windows: windows
+            }
+
+            const publicationRef = getPublicationsRef(portalActivity).push(publication)
+            const publicationId = publicationRef.key
+            if (publicationId) {
+
+              // and finally tell all the child windows so they can generate artifacts
+              const publishRequest:CollabSpaceClientPublishRequest = {
+                publicationsPath: getPublicationsPath(portalActivity, publicationId),
+                artifactsPath: getArtifactsPath(portalActivity),
+                artifactStoragePath: getArtifactsStoragePath(portalActivity, publicationId)
+              }
+              this.windowManager.postToAllWindows(
+                CollabSpaceClientPublishRequestMessage,
+                publishRequest
+              )
+            }
+          })
+          .catch((err) => alert(err.toString()))
+      })
+      .catch((err) => {
+        alert(`Cannot create document: ${err.toString()}`)
+      })
+  }
+
   renderDocumentInfo() {
     const {documentInfo} = this.state
     if (!documentInfo) {
@@ -320,6 +378,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   renderToolbarButtons() {
     const {document} = this.props
     const showDemoButton = this.props.isTemplate && !document.isReadonly
+    const showPublishButton = !this.props.isTemplate && !document.isReadonly
     return (
       <div className="buttons">
         <div className="left-buttons">
@@ -327,6 +386,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
         </div>
         <div className="right-buttons">
           {showDemoButton ? <button type="button" onClick={this.handleCreateDemoButton}>Create Demo</button> : null}
+          {showPublishButton ? <button type="button" onClick={this.handlePublishButton}>Publish</button> : null}
         </div>
       </div>
     )

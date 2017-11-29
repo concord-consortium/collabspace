@@ -1,5 +1,5 @@
 import * as React from "react"
-import {CollabSpaceClient, CollabSpaceClientInitRequest} from "../lib/collabspace-client"
+import {CollabSpaceClient, CollabSpaceClientInitRequest, CollabSpaceClientPublishResponse} from "../lib/collabspace-client"
 import * as firebase from "firebase"
 import * as _ from "lodash"
 
@@ -71,6 +71,23 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
         const firebaseStorage = new FirebaseStorage(this.collabSpaceClient.dataRef, req.readonly)
         this.drawingTool.addStore(firebaseStorage)
         return {}
+      },
+
+      publish: (publication) => {
+        const mimeType = "image/png"
+        return new Promise<CollabSpaceClientPublishResponse>( (resolve, reject) => {
+          const blobSaver = (blob:Blob) => {
+            if (blob) {
+              publication.saveArtifactBlob("Drawing", blob, mimeType)
+                .then((artifact) => resolve({}))
+                .catch(reject)
+            }
+            else {
+              reject("Couldn't create firebase file from canvas blob");
+            }
+          }
+          this.drawingTool.canvas.getElement().toBlob(blobSaver, mimeType)
+        })
       }
     })
   }

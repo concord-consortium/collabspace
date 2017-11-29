@@ -16,8 +16,9 @@ Viewable at (https://collabspace.concord.org/)[https://collabspace.concord.org/]
         /activities
           /<activityId> => Activity
             groups => Group{}
-    /documents => Document{}
-    /artifacts
+        /documents => Document{}
+        /publications => Publication[]
+        /artifacts
 
 Activity
   templateId: string (userId:documentId)
@@ -27,9 +28,10 @@ Activity
 Group
   documentId: string
   portalUsers: PortalUser{}
-  publications: Publication[]
 
 Publication
+  activityId: number
+  group: number
   documentId: string
   portalUser: PortalUser
   createdAt: number

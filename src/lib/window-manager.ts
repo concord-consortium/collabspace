@@ -189,9 +189,8 @@ export class WindowManager {
     this.state.topWindow = null
 
     let topOrder = 0
-    Object.keys(this.windows).forEach((id) => {
-      const window = this.windows[id]
-      const order = windowOrder.indexOf(id)
+    this.forEachWindow((window) => {
+      const order = windowOrder.indexOf(window.id)
       if (window && (order !== -1)) {
         this.state.allOrderedWindows.push({order, window})
         if (!window.attrs.minimized) {
@@ -244,9 +243,8 @@ export class WindowManager {
   ensureUniqueTitle(title:string) {
     const isUniqueTitle = (title:string) => {
       let isUnique = true
-      Object.keys(this.windows).forEach((id) => {
-        const window = this.windows[id]
-        if (window && (window.attrs.title === title)) {
+      this.forEachWindow((window) => {
+        if (window.attrs.title === title) {
           isUnique = false
         }
       })
@@ -404,5 +402,22 @@ export class WindowManager {
         window.iframe.phone.post(CollabSpaceClientInitRequestMessage, initRequest)
       })
     }
+  }
+
+  postToAllWindows(message:string, request:object) {
+    this.forEachWindow((window) => {
+      if (window.iframe.connected) {
+        window.iframe.phone.post(message, request)
+      }
+    })
+  }
+
+  forEachWindow(callback: (window:Window) => void) {
+    Object.keys(this.windows).forEach((id) => {
+      const window = this.windows[id]
+      if (window) {
+        callback(window)
+      }
+    })
   }
 }

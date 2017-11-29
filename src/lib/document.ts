@@ -1,7 +1,7 @@
 import * as firebase from "firebase"
 import { FirebaseWindowMap } from "./window"
 import { PortalInfo, PortalActivity, PortalUser, PortalUserConnectionStatusMap } from "./auth"
-import { getUserTemplatePath, getActivityRef, getGroupDocumentPath } from "./refs"
+import { getUserTemplatePath, getActivityRef, getDocumentPath } from "./refs"
 
 export interface FirebaseDocumentData {
   windows: FirebaseWindowMap
@@ -34,17 +34,25 @@ export interface FirebaseActivityGroupMap {
 export interface FirebaseActivityGroup {
   documentId: string
   portalUsers: PortalUserConnectionStatusMap
-  publications: FirebaseActivityGroupPublication[]
 }
 
-export interface FirebaseActivityGroupPublication {
-  documentId: string
+export interface FirebasePublicationWindow {
+  title:string
+}
+export interface FirebasePublicationWindowMap {
+  [key: string]: FirebasePublicationWindow
+}
+
+export interface FirebasePublication {
+  activityId: number
+  group: number
   portalUserEmail: string
-  createdAt: number
-  artifactIds: string[]
+  createdAt: number|object
+  documentId: string
+  windows: FirebasePublicationWindowMap
 }
 
-export interface FirebaseActivityGroupPublicationArtifact {
+export interface FirebaseArtifact {
   title: string
   mimeType: string
   url: string
@@ -177,22 +185,21 @@ export class Document {
             .then((snapshot) => {
               const existingFirebaseGroup:FirebaseActivityGroup|null = snapshot.val()
               if (existingFirebaseGroup) {
-                const documentPath = getGroupDocumentPath(activity, existingFirebaseGroup.documentId)
+                const documentPath = getDocumentPath(activity, existingFirebaseGroup.documentId)
                 Document.LoadDocumentFromFirebase(existingFirebaseGroup.documentId, documentPath)
                   .then((document) => resolve([document, groupRef]))
                   .catch(reject)
               }
               else {
-                this.copy(getGroupDocumentPath(activity))
+                this.copy(getDocumentPath(activity))
                   .then((document) => {
                     const firebaseGroup:FirebaseActivityGroup = {
                       documentId: document.id,
-                      portalUsers: {},
-                      publications: []
+                      portalUsers: {}
                     }
                     groupRef
                       .set(firebaseGroup)
-                      .then((document) => resolve([document, groupRef]))
+                      .then(() => resolve([document, groupRef]))
                       .catch(reject)
                   })
                   .catch(reject)
