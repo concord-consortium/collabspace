@@ -276,8 +276,9 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   }
 
   handlePublishButton() {
+    const {groupUsers} = this.state
     const {portalActivity, portalUser, groupRef, group} = this.props
-    if (!portalActivity || !portalUser || (portalUser.type === "teacher") || !groupRef || !group) {
+    if (!groupUsers || !portalActivity || !portalUser || (portalUser.type === "teacher") || !groupRef || !group) {
       return
     }
 
@@ -313,7 +314,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
             const publication:FirebasePublication = {
               activityId: portalActivity.id,
               group: group,
-              portalUserEmail: portalUser.email,
+              creator: portalUser.email,
+              groupMembers: groupUsers,
               createdAt: firebase.database.ServerValue.TIMESTAMP,
               documentId: document.id,
               windows: windows

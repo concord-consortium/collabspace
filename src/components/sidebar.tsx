@@ -5,6 +5,7 @@ import { WindowManager } from "../lib/window-manager"
 import { PortalActivity, PortalUser, PortalUserMap } from "../lib/auth"
 import { getPublicationsRef, getArtifactsRef } from "../lib/refs"
 import { FirebasePublication, FirebasePublicationWindow, FirebaseArtifact } from "../lib/document"
+import escapeFirebaseKey from "../lib/escape-firebase-key"
 
 const timeago = require("timeago.js")
 const timeagoInstance = timeago()
@@ -145,6 +146,11 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
     this.setState({expanded: !this.state.expanded})
   }
 
+  getUserName(email:string) {
+    const user = this.props.userMap[escapeFirebaseKey(email)]
+    return user ? user.fullName : "Unknown Student"
+  }
+
   renderWindows() {
     const {publicationItem} = this.props
     const {publication} = publicationItem
@@ -171,14 +177,32 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
     )
   }
 
+  renderGroupUsers() {
+    const {publication} = this.props.publicationItem
+    const groupUsers:string[] = []
+    const escapedCreatorEmail = escapeFirebaseKey(publication.creator)
+    Object.keys(publication.groupMembers).forEach((email) => {
+      if (email !== escapedCreatorEmail) {
+        groupUsers.push(this.getUserName(email))
+      }
+    })
+    if (groupUsers.length === 0) {
+      return null
+    }
+    return (
+      <div className="group-users">
+        With {groupUsers.join(", ")}
+      </div>
+    )
+  }
+
   renderExpanded() {
     const {publication} = this.props.publicationItem
-    const user = this.props.userMap[publication.portalUserEmail]
-    const name = user ? user.fullName : "Unknown Student"
     return (
       <div className="expanded-info">
-        <div className="user-name">{name}</div>
-        View In Dashboard
+        <div className="user-name">{this.getUserName(publication.creator)}</div>
+        {this.renderGroupUsers()}
+        Open In Dashboard <strong>(TBD)</strong>
         {this.renderWindows()}
       </div>
     )
@@ -188,12 +212,12 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
     const {publicationItem} = this.props
     const {publication} = publicationItem
     const {group, createdAt} = publication
-    const user = this.props.userMap[publication.portalUserEmail]
+    const user = this.props.userMap[publication.creator]
     const name = user ? user.fullName : "Unknown Student"
     const initials = user ? user.initials : "?"
     return (
       <div className="publication">
-        <div  className="publication-header" onClick={this.handleToggle}>
+        <div className="publication-header" onClick={this.handleToggle}>
           <span className="initials" title={name}>{initials}</span> in group {group} <span className="ago">{timeagoInstance.format(createdAt)}</span>
         </div>
         {this.state.expanded ? this.renderExpanded() : null}
@@ -230,6 +254,7 @@ export class SidebarComponent extends React.Component<SidebarComponentProps, Sid
     this.userMap = {}
     this.props.portalActivity.classInfo.students.forEach((student) => {
       this.userMap[student.email] = student
+      this.userMap[escapeFirebaseKey(student.email)] = student
     })
   }
 
@@ -265,7 +290,7 @@ export class SidebarComponent extends React.Component<SidebarComponentProps, Sid
         case "group":
           return publication.group === group
         case "mine":
-          return publication.portalUserEmail === email
+          return publication.creator === email
         default:
           return true
       }

@@ -42,8 +42,9 @@ export interface FirebaseArtifactMap {
 
 export interface FirebasePublication {
   activityId: number
+  creator: string
   group: number
-  portalUserEmail: string
+  groupMembers: PortalUserConnectionStatusMap
   createdAt: number|object
   documentId: string
   windows: FirebasePublicationWindowMap
