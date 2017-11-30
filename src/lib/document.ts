@@ -1,10 +1,10 @@
 import * as firebase from "firebase"
-import { FirebaseWindowMap } from "./window"
+import { FirebaseWindows } from "./window"
 import { PortalInfo, PortalActivity, PortalUser, PortalUserConnectionStatusMap } from "./auth"
 import { getUserTemplatePath, getActivityRef, getDocumentPath } from "./refs"
 
 export interface FirebaseDocumentData {
-  windows: FirebaseWindowMap
+  windows: FirebaseWindows
 }
 
 export interface FirebaseDocumentInfo {

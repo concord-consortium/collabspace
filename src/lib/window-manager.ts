@@ -1,6 +1,6 @@
 import { Window, WindowMap, IFrame, FirebaseWindowAttrs } from "./window"
-import { Document } from "./document"
-import { FirebaseWindowAttrsMap } from "./window"
+import { Document, FirebasePublication } from "./document"
+import { FirebaseWindowAttrsMap, FirebaseWindows } from "./window"
 import { FirebaseConfig } from "./firebase-config"
 import { IFramePhoneLib,
   IFramePhoneParent,
@@ -16,6 +16,8 @@ import { IFramePhoneLib,
  const IFramePhoneFactory:IFramePhoneLib = require("iframe-phone")
 
 import * as firebase from "firebase"
+import { PortalActivity } from "./auth";
+import { getDocumentRef } from "./refs"
 
 export enum DragType { GrowLeft, GrowRight, GrowUp, GrowDown, GrowDownRight, GrowDownLeft, Position, None }
 export interface DragInfo {
@@ -272,7 +274,7 @@ export class WindowManager {
     return newTitle
   }
 
-  add(url: string, title:string) {
+  add(url: string, title:string, iframeData?:any) {
     const attrs = {
       top: this.randInRange(50, 200),
       left: this.randInRange(50, 200),
@@ -283,7 +285,7 @@ export class WindowManager {
       url,
       title: this.ensureUniqueTitle(title),
     }
-    Window.CreateInFirebase({document: this.document, attrs})
+    Window.CreateInFirebase({document: this.document, attrs}, iframeData)
       .then((window) => {
         this.moveToTop(window, true)
       })
@@ -418,6 +420,27 @@ export class WindowManager {
       if (window) {
         callback(window)
       }
+    })
+  }
+
+  copyWindowFromPublication(portalActivity:PortalActivity, publication:FirebasePublication, windowId: string, title:string) {
+    return new Promise<void>((resolve, reject) => {
+      // open the publication document
+      const documentWindowsRef = getDocumentRef(portalActivity, publication.documentId).child("data").child("windows")
+      documentWindowsRef.once("value")
+        .then((snapshot) => {
+          const windows:FirebaseWindows|null = snapshot.val()
+          const attrs = windows && windows.attrs && windows.attrs[windowId] ? windows.attrs[windowId] : null
+          const iframeData = windows && windows.iframeData && windows.iframeData[windowId] ? windows.iframeData[windowId] : null
+
+          if (!attrs || !iframeData) {
+            return reject("Cannot find window in publication!")
+          }
+          else {
+            this.add(attrs.url, title, iframeData)
+          }
+        })
+        .catch(reject)
     })
   }
 }

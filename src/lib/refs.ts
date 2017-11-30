@@ -38,7 +38,7 @@ export const getDocumentPath = (activity:PortalActivity, documentId?:string) => 
   return documentId ? `${prefix}/${documentId}` : prefix
 }
 
-export const getGroupDocumentRef = (activity:PortalActivity, documentId?:string) => {
+export const getDocumentRef = (activity:PortalActivity, documentId?:string) => {
   return firebase.database().ref(getDocumentPath(activity, documentId))
 }
 

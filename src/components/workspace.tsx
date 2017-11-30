@@ -488,6 +488,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
              group={group}
              toggleViewArtifact={this.toggleViewArtifact}
              publishing={this.state.publishing}
+             windowManager={this.windowManager}
            />
   }
 

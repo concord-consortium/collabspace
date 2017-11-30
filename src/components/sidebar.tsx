@@ -53,9 +53,12 @@ export class SidebarPublicationArtifactComponent extends React.Component<Sidebar
 export interface SidebarPublicationWindowComponentProps {
   windowId: string
   publicationId: string
+  publication: FirebasePublication
   window: FirebasePublicationWindow
   toggleViewArtifact: (artifact: FirebaseArtifact) => void
   portalActivity: PortalActivity
+  windowManager: WindowManager
+  creatorName: string
 }
 export interface SidebarPublicationWindowComponentState {
   artifactItems: FirebaseArtifactItem[]
@@ -71,6 +74,7 @@ export class SidebarPublicationWindowComponent extends React.Component<SidebarPu
     }
     this.artifactsRef = getPublicationsRef(this.props.portalActivity, this.props.publicationId).child("windows").child(this.props.windowId).child("artifacts")
     this.handleArtifactAdded = this.handleArtifactAdded.bind(this)
+    this.handleCopyIntoDocument = this.handleCopyIntoDocument.bind(this)
   }
 
   componentWillMount() {
@@ -88,6 +92,12 @@ export class SidebarPublicationWindowComponent extends React.Component<SidebarPu
     const {artifactItems} = this.state
     artifactItems.push({id: snapshot.key as string, artifact})
     this.setState({artifactItems})
+  }
+
+  handleCopyIntoDocument() {
+    const title = `${this.props.window.title} by ${this.props.creatorName} in group ${this.props.publication.group}`
+    this.props.windowManager.copyWindowFromPublication(this.props.portalActivity, this.props.publication, this.props.windowId, title)
+      .catch((err:any) => alert(err.toString()))
   }
 
   renderArtifacts() {
@@ -114,7 +124,7 @@ export class SidebarPublicationWindowComponent extends React.Component<SidebarPu
         <div className="window-title">{this.props.window.title}</div>
         {this.renderArtifacts()}
         <div className="window-actions">
-          Copy Into Your Document
+          <div onClick={this.handleCopyIntoDocument}>Copy Into Your Document</div>
         </div>
       </div>
     )
@@ -126,9 +136,11 @@ export interface SidebarPublicationComponentProps {
   userMap: PortalUserMap
   toggleViewArtifact: (artifact: FirebaseArtifact) => void
   portalActivity: PortalActivity
+  windowManager: WindowManager
 }
 export interface SidebarPublicationComponentState {
   expanded: boolean
+  creatorName: string
 }
 
 export class SidebarPublicationComponent extends React.Component<SidebarPublicationComponentProps, SidebarPublicationComponentState> {
@@ -137,7 +149,8 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
   constructor (props:SidebarPublicationComponentProps) {
     super(props)
     this.state = {
-      expanded: false
+      expanded: false,
+      creatorName: this.getUserName(this.props.publicationItem.publication.creator)
     }
     this.handleToggle = this.handleToggle.bind(this)
   }
@@ -167,10 +180,13 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
           return <SidebarPublicationWindowComponent
                    key={windowId}
                    publicationId={publicationItem.id}
+                   publication={publication}
                    windowId={windowId}
                    window={window}
+                   creatorName={this.state.creatorName}
                    toggleViewArtifact={this.props.toggleViewArtifact}
                    portalActivity={this.props.portalActivity}
+                   windowManager={this.props.windowManager}
                  />
         })}
       </div>
@@ -200,7 +216,7 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
     const {publication} = this.props.publicationItem
     return (
       <div className="expanded-info">
-        <div className="user-name">{this.getUserName(publication.creator)}</div>
+        <div className="user-name">{this.state.creatorName}</div>
         {this.renderGroupUsers()}
         Open In Dashboard <strong>(TBD)</strong>
         {this.renderWindows()}
@@ -232,6 +248,7 @@ export interface SidebarComponentProps {
   group: number
   toggleViewArtifact: (artifact: FirebaseArtifact) => void
   publishing: boolean
+  windowManager: WindowManager
 }
 export interface SidebarComponentState {
   publicationItems: FirebasePublicationItem[]
@@ -336,6 +353,7 @@ export class SidebarComponent extends React.Component<SidebarComponentProps, Sid
                    userMap={this.userMap}
                    toggleViewArtifact={this.props.toggleViewArtifact}
                    portalActivity={this.props.portalActivity}
+                   windowManager={this.props.windowManager}
                  />
         })}
       </div>
