@@ -86,7 +86,7 @@ export class InlineEditorComponent extends React.Component<InlineEditorComponent
     const style = this.props.width ? {width: this.props.width} : {}
 
     if (!this.state.editing) {
-      return <div className="static editable clickable" onDoubleClick={this.handleDoubleClick} style={style}>{text}</div>
+      return <div className="static" onDoubleClick={this.handleDoubleClick} style={style}><span className="clickable editable">{text}</span></div>
     }
 
     return <input
