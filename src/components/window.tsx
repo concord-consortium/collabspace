@@ -47,6 +47,7 @@ export interface WindowComponentProps {
   windowManager: WindowManager
   isTopWindow: boolean
   zIndex: number
+  isTemplate: boolean
 }
 export interface WindowComponentState {
   editingTitle: boolean
@@ -172,7 +173,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
       <div className="buttons" ref="buttons">
         <span onClick={this.handleMinimize} title="Minimize Window">-</span>
         <span onClick={this.handleMaximize} title={this.props.window.attrs.maximized ? "Unmaximize Window" : "Maximize Window"}>+</span>
-        <span onClick={this.handleClose} title="Close Window">x</span>
+        {this.props.isTemplate ? <span onClick={this.handleClose} title="Close Window">x</span> : null}
       </div>
     )
   }
@@ -180,11 +181,12 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   render() {
     const {window, isTopWindow} = this.props
     const {attrs} = window
-    const {maximized, minimized} = attrs
+    const {title, maximized, minimized, url} = attrs
     const titlebarClass = `titlebar${isTopWindow ? " top" : ""}`
     let windowStyle:any = maximized
       ? {top: 0, right: 0, bottom: 0, left: 0, zIndex: this.props.zIndex}
       : {top: attrs.top, width: attrs.width, left: attrs.left, height: attrs.height, zIndex: this.props.zIndex}
+    const titleWidth = attrs.width - (this.props.isTemplate ? 65 : 55)
 
     if (minimized) {
       windowStyle.display = "none"
@@ -193,13 +195,13 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     return (
       <div className="window" ref="window" key={window.id} style={windowStyle}>
         <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
-          <div className="title">
-            <InlineEditorComponent text={attrs.title} changeText={this.handleChangeTitle} />
+          <div className="title" style={{width: titleWidth}}>
+            {this.props.isTemplate ? <InlineEditorComponent text={title} changeText={this.handleChangeTitle} width={titleWidth} /> : <div className="static">{title}</div>}
           </div>
           {this.renderButtons()}
         </div>
         <div className="iframe">
-          <WindowIframeComponent key={window.id} src={attrs.url} loaded={this.handleIframeLoaded} />
+          <WindowIframeComponent key={window.id} src={url} loaded={this.handleIframeLoaded} />
         </div>
         {this.renderIframeOverlay()}
         {!maximized ? <div className="left-drag" onMouseDown={this.handleDragLeft} /> : null}

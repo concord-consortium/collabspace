@@ -23,15 +23,11 @@ export interface FirebaseIFrameDataMap {
   [key: string]: any|null
 }
 
-export interface FirebaseWindow {
+export interface FirebaseWindows {
   attrs: FirebaseWindowAttrsMap
   order: string[]
   minimizedOrder: string[]
   iframeData: FirebaseIFrameDataMap
-}
-
-export interface FirebaseWindowMap {
-  [key: string]: FirebaseWindow
 }
 
 export interface WindowMap {
@@ -76,19 +72,31 @@ export class Window {
   destroy() {
   }
 
-  static CreateInFirebase(options: WindowOptions): Promise<Window> {
+  static CreateInFirebase(options: WindowOptions, iframeData?:any): Promise<Window> {
     return new Promise<Window>((resolve, reject) => {
-      const propsRef = options.document.getWindowsDataRef("attrs")
-      const ref = propsRef.push(options.attrs)
-      if (ref.key) {
-        resolve(new Window(ref.key, options))
+      let windowId
+      const attrsRef = options.document.getWindowsDataRef("attrs")
+      if (iframeData) {
+        const iframeRef = options.document.getWindowsDataRef("iframeData")
+        const iframeDataRef = iframeRef.push(iframeData)
+        if (iframeDataRef.key) {
+          attrsRef.child(iframeDataRef.key).set(options.attrs)
+          windowId = iframeDataRef.key
+        }
+      }
+      else {
+        const attrsDataRef = attrsRef.push(options.attrs)
+        windowId = attrsDataRef.key
+      }
+      if (windowId) {
+        resolve(new Window(windowId, options))
       }
     })
   }
 
   close() {
     this.destroy()
-    if (!this.document.readonly) {
+    if (!this.document.isReadonly) {
       this.iframe.dataRef.set(null)
       this.attrsRef.set(null)
     }
@@ -96,7 +104,7 @@ export class Window {
 
   setAttrs(attrs:FirebaseWindowAttrs, updateFirebase:boolean = true) {
     this.attrs = attrs
-    if (updateFirebase && !this.document.readonly) {
+    if (updateFirebase && !this.document.isReadonly) {
       this.attrsRef.set(attrs)
     }
     if (this.onAttrsChanged) {
