@@ -52,6 +52,13 @@ export interface WindowManagerSettings {
   syncChanges: boolean
 }
 
+interface FirebaseOrderMap {
+  [key: string]: number|null
+}
+interface InvertedFirebaseOrderMap {
+  [key: string]: string
+}
+
 export class WindowManager {
   windows: WindowMap
   document: Document
@@ -129,6 +136,27 @@ export class WindowManager {
     this.onStateChanged(this.state)
   }
 
+  firebaseOrderMapToArray(orderMap:FirebaseOrderMap) {
+    const invertedOrderMap:InvertedFirebaseOrderMap = {}
+    Object.keys(orderMap).forEach((windowId) => {
+      const order = orderMap[windowId] as number // to avoid TS complaining about possible nulls
+      invertedOrderMap[order] = windowId
+    })
+    const orderArray:string[] = [];
+    Object.keys(invertedOrderMap).forEach((key) => {
+      orderArray[parseInt(key)] = invertedOrderMap[key]
+    })
+    return orderArray
+  }
+
+  arrayToFirebaseOrderMap(orderArray:string[]) {
+    const orderMap:FirebaseOrderMap = {}
+    orderArray.forEach((windowId, index) => {
+      orderMap[windowId] = index
+    })
+    return orderMap
+  }
+
   handleAttrsRefChildAdded(snapshot:firebase.database.DataSnapshot) {
     const windowId = snapshot.key
     const attrs:FirebaseWindowAttrs|null = snapshot.val()
@@ -180,8 +208,13 @@ export class WindowManager {
   // iframe element in the DOM on a re-render which causes the iframe to reload.
   // By keeping the render ordering always the same and using a separate order field
   // to set the zIndex of the window we avoid iframe reloads.
+  // You may also ask youself "Why keep the order as a hash in Firebase and an array in the manager?"
+  // This is because we don't want to be rewriting entire arrays in Firebase as that doesn't
+  // handle writes by simulataneous users.  Instead we keep a map in Firebase so we can use
+  // update to set the order and then an array in the manager to simplify the loops of windows
   handleOrderRef(snapshot:firebase.database.DataSnapshot) {
-    const windowOrder:string[] = snapshot.val() || []
+    const windowOrderMap:FirebaseOrderMap = snapshot.val() || {}
+    const windowOrder = this.firebaseOrderMapToArray(windowOrderMap)
     this.handleOrderChange(windowOrder)
   }
 
@@ -208,7 +241,8 @@ export class WindowManager {
   }
 
   handleMinimizedOrderRef(snapshot:firebase.database.DataSnapshot) {
-    const minimizedWindowOrder:string[] = snapshot.val() || []
+    const minimizedWindowOrderMap:FirebaseOrderMap = snapshot.val() || {}
+    const minimizedWindowOrder = this.firebaseOrderMapToArray(minimizedWindowOrderMap)
     this.handleMinimizedOrderChange(minimizedWindowOrder)
   }
 
@@ -303,9 +337,11 @@ export class WindowManager {
 
     if (this.syncChanges || forceSync) {
       this.orderRef.once("value", (snapshot) => {
-        const order:string[] = snapshot.val() || []
+        const currentOrderMap:FirebaseOrderMap = snapshot.val() || {}
+        const order = this.firebaseOrderMapToArray(currentOrderMap)
         moveToTopInOrder(order)
-        this.orderRef.set(order)
+        const newOrderMap = this.arrayToFirebaseOrderMap(order)
+        this.orderRef.update(newOrderMap)
       })
     }
     else {
@@ -315,27 +351,21 @@ export class WindowManager {
   }
 
   close(window:Window) {
-    const removeFromOrder = (order:string[]) => {
-      const index = order.indexOf(window.id)
-      if (index !== -1) {
-        order.splice(index, 1)
-      }
-    }
-
     const afterRemoving = () => {
       window.close()
       delete this.windows[window.id]
     }
 
     if (this.syncChanges) {
-      this.orderRef.once("value", (snapshot) => {
-        const order:string[] = snapshot.val() || []
-        removeFromOrder(order)
-        this.orderRef.set(order, afterRemoving)
-      })
+      const orderMap:FirebaseOrderMap = {}
+      orderMap[window.id] = null
+      this.orderRef.update(orderMap, afterRemoving)
     }
     else {
-      removeFromOrder(this.windowOrder)
+      const index = this.windowOrder.indexOf(window.id)
+      if (index !== -1) {
+        this.windowOrder.splice(index, 1)
+      }
       this.handleOrderChange(this.windowOrder)
       afterRemoving()
     }
@@ -352,25 +382,33 @@ export class WindowManager {
     attrs.minimized = minimized
     window.setAttrs(attrs, this.syncChanges)
 
-    const toggleMinimized = (minimizedOrder:string[]) => {
-      const index = minimizedOrder.indexOf(window.id)
-      if (!minimized && (index !== -1)) {
-        minimizedOrder.splice(index, 1)
-      }
-      else if (minimized && (index === -1)) {
-        minimizedOrder.push(window.id)
-      }
-    }
-
     if (this.syncChanges) {
-      this.minimizedOrderRef.once("value", (snapshot) => {
-        const minimizedOrder:string[] = snapshot.val() || []
-        toggleMinimized(minimizedOrder)
-        this.minimizedOrderRef.set(minimizedOrder)
-      })
+      if (!minimized) {
+        const updateToMinimizedOrderMap:FirebaseOrderMap = {}
+        updateToMinimizedOrderMap[window.id] = null
+        this.minimizedOrderRef.update(updateToMinimizedOrderMap)
+      }
+      else {
+        this.minimizedOrderRef.once("value", (snapshot) => {
+          const currentMinimizedOrderMap:FirebaseOrderMap = snapshot.val() || {}
+          const minimizedOrderArray = this.firebaseOrderMapToArray(currentMinimizedOrderMap)
+          const index = minimizedOrderArray.indexOf(window.id)
+          if (index === -1) {
+            minimizedOrderArray.push(window.id)
+            const newMinimizedOrderMap = this.arrayToFirebaseOrderMap(minimizedOrderArray)
+            this.minimizedOrderRef.update(newMinimizedOrderMap)
+          }
+        })
+      }
     }
     else {
-      toggleMinimized(this.minimizedWindowOrder)
+      const index = this.minimizedWindowOrder.indexOf(window.id)
+      if (!minimized && (index !== -1)) {
+        this.minimizedWindowOrder.splice(index, 1)
+      }
+      else if (minimized && (index === -1)) {
+        this.minimizedWindowOrder.push(window.id)
+      }
       this.handleMinimizedOrderChange(this.minimizedWindowOrder)
     }
   }
