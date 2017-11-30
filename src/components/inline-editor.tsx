@@ -84,7 +84,7 @@ export class InlineEditorComponent extends React.Component<InlineEditorComponent
     const {text} = this.state
 
     if (!this.state.editing) {
-      return <div className="static" onDoubleClick={this.handleDoubleClick}>{text}</div>
+      return <div className="static editable clickable" onDoubleClick={this.handleDoubleClick}>{text}</div>
     }
 
     return <input

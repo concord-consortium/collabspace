@@ -28,6 +28,7 @@ export interface WorkspaceComponentProps {
   isTemplate: boolean
   groupRef: firebase.database.Reference|null
   group: number|null
+  leaveGroup?: () => void
 }
 export interface WorkspaceComponentState extends WindowManagerState {
   documentInfo: FirebaseDocumentInfo|null
@@ -45,6 +46,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   userRef: firebase.database.Reference|null
   groupUsersRef: firebase.database.Reference|null
   windowManager: WindowManager
+  userOnDisconnect: firebase.database.OnDisconnect|null
 
   constructor (props:WorkspaceComponentProps) {
     super(props)
@@ -74,6 +76,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
     this.changeDocumentName = this.changeDocumentName.bind(this)
     this.toggleViewArtifact = this.toggleViewArtifact.bind(this)
     this.clearViewArtifact = this.clearViewArtifact.bind(this)
+    this.promptToChangeGroup = this.promptToChangeGroup.bind(this)
 
     this.handleDrop = this.handleDrop.bind(this)
     this.handleDragOver = this.handleDragOver.bind(this)
@@ -128,6 +131,15 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
   componentWillUnmount() {
     this.windowManager.destroy()
 
+    if (this.userRef) {
+      this.userOnDisconnect && this.userOnDisconnect.cancel()
+      const disconnected:PortalUserDisconnected = {
+        connected: false,
+        disconnectedAt: firebase.database.ServerValue.TIMESTAMP
+      }
+      this.userRef.set(disconnected)
+    }
+
     this.infoRef.off("value", this.handleInfoChange)
     this.connectedRef && this.connectedRef.off("value", this.handleConnected)
     this.groupUsersRef && this.groupUsersRef.off("value", this.handleGroupUsersChange)
@@ -155,7 +167,8 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
         connected: false,
         disconnectedAt: firebase.database.ServerValue.TIMESTAMP
       }
-      this.userRef.onDisconnect().set(disconnected)
+      this.userOnDisconnect = this.userRef.onDisconnect()
+      this.userOnDisconnect.set(disconnected)
       this.userRef.set(connected)
     }
   }
@@ -343,6 +356,12 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       .catch(donePublishing)
   }
 
+  promptToChangeGroup() {
+    if (this.props.leaveGroup && confirm("Do you want to change your group?")) {
+      this.props.leaveGroup()
+    }
+  }
+
   renderDocumentInfo() {
     const {documentInfo} = this.state
     if (!documentInfo) {
@@ -376,7 +395,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
       }
     })
     return (
-      <div className="group-info"><div className="group-name">Group {this.props.group}</div>{users}</div>
+      <div className="group-info"><div className="group-name clickable" onClick={this.promptToChangeGroup} title="Click to leave group">Group {this.props.group}</div>{users}</div>
     )
   }
 

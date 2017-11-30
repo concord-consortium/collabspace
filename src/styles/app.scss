@@ -40,6 +40,14 @@ body {
     font-weight: bold;
   }
 
+  .clickable:hover {
+    text-decoration: underline;
+  }
+
+  .editable {
+    cursor: text;
+  }
+
   .document-crud {
     .header {
       position: fixed;
@@ -176,7 +184,6 @@ body {
           .static {
             display: inline-block;
             margin-top: 2px;
-            cursor: text;
           }
 
           input {
@@ -349,18 +356,17 @@ body {
           background-color: #ddd;
           color: #000;
           font-size: 12px;
+          cursor: move;
 
           .title {
             float: left;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
-            cursor: pointer;
 
             .static {
               display: inline-block;
               margin: 3px 0 0 6px;
-              cursor: text;
             }
 
             input {

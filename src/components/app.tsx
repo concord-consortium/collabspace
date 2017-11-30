@@ -64,6 +64,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     this.startingTitle = document.title
     this.setTitle = this.setTitle.bind(this)
     this.handleChoseGroup = this.handleChoseGroup.bind(this)
+    this.leaveGroup = this.leaveGroup.bind(this)
   }
 
   refs: {
@@ -143,6 +144,10 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
     }
   }
 
+  leaveGroup() {
+    this.setState({groupChosen: false, group: 0, document: null})
+  }
+
   renderChoseGroup() {
     const items:JSX.Element[] = []
     for (let i=1; i <= 99; i++) {
@@ -189,6 +194,7 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
                   setTitle={null}
                   group={this.state.group}
                   groupRef={this.state.groupRef}
+                  leaveGroup={this.leaveGroup}
                 />
               }
               return this.renderProgress("Loading collaborative space group document...")

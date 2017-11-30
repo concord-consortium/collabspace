@@ -181,7 +181,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
   render() {
     const {window, isTopWindow} = this.props
     const {attrs} = window
-    const {maximized, minimized} = attrs
+    const {title, maximized, minimized, url} = attrs
     const titlebarClass = `titlebar${isTopWindow ? " top" : ""}`
     let windowStyle:any = maximized
       ? {top: 0, right: 0, bottom: 0, left: 0, zIndex: this.props.zIndex}
@@ -195,12 +195,12 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
       <div className="window" ref="window" key={window.id} style={windowStyle}>
         <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
           <div className="title">
-            <InlineEditorComponent text={attrs.title} changeText={this.handleChangeTitle} />
+            {this.props.isTemplate ? <InlineEditorComponent text={title} changeText={this.handleChangeTitle} /> : <div className="static">{title}</div>}
           </div>
           {this.renderButtons()}
         </div>
         <div className="iframe">
-          <WindowIframeComponent key={window.id} src={attrs.url} loaded={this.handleIframeLoaded} />
+          <WindowIframeComponent key={window.id} src={url} loaded={this.handleIframeLoaded} />
         </div>
         {this.renderIframeOverlay()}
         {!maximized ? <div className="left-drag" onMouseDown={this.handleDragLeft} /> : null}

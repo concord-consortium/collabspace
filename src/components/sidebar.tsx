@@ -126,7 +126,7 @@ export class SidebarPublicationWindowComponent extends React.Component<SidebarPu
         <div className="window-title">{this.props.window.title}</div>
         {this.renderArtifacts()}
         <div className="window-actions">
-          <div onClick={this.handleCopyIntoDocument}>Copy Into Your Document</div>
+          <div onClick={this.handleCopyIntoDocument} className="clickable">Copy Into Your Document</div>
         </div>
       </div>
     )
@@ -220,7 +220,7 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
       <div className="expanded-info">
         <div className="user-name">{this.state.creatorName}</div>
         {this.renderGroupUsers()}
-        Open In Dashboard <strong>(TBD)</strong>
+        <div className="clickable">Open In Dashboard <strong>(TBD)</strong></div>
         {this.renderWindows()}
       </div>
     )
@@ -235,7 +235,7 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
     const initials = user ? user.initials : "?"
     return (
       <div className="publication">
-        <div className="publication-header" onClick={this.handleToggle}>
+        <div className="publication-header clickable" onClick={this.handleToggle}>
           <span className="initials" title={name}>{initials}</span> in group {group} <span className="ago">{timeagoInstance.format(createdAt)}</span>
         </div>
         {this.state.expanded ? this.renderExpanded() : null}
@@ -318,7 +318,7 @@ export class SidebarComponent extends React.Component<SidebarComponentProps, Sid
 
   renderFilterSelector() {
     const className = (filter:string) => {
-      return filter === this.state.filter ? "selected-filter" : ""
+      return `clickable ${filter === this.state.filter ? "selected-filter" : ""}`
     }
     return (
       <div className="filter-selector">
