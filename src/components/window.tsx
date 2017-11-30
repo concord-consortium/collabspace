@@ -186,6 +186,7 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     let windowStyle:any = maximized
       ? {top: 0, right: 0, bottom: 0, left: 0, zIndex: this.props.zIndex}
       : {top: attrs.top, width: attrs.width, left: attrs.left, height: attrs.height, zIndex: this.props.zIndex}
+    const titleWidth = attrs.width - (this.props.isTemplate ? 65 : 55)
 
     if (minimized) {
       windowStyle.display = "none"
@@ -194,8 +195,8 @@ export class WindowComponent extends React.Component<WindowComponentProps, Windo
     return (
       <div className="window" ref="window" key={window.id} style={windowStyle}>
         <div className={titlebarClass} onMouseDown={this.handleDragWindow}>
-          <div className="title">
-            {this.props.isTemplate ? <InlineEditorComponent text={title} changeText={this.handleChangeTitle} /> : <div className="static">{title}</div>}
+          <div className="title" style={{width: titleWidth}}>
+            {this.props.isTemplate ? <InlineEditorComponent text={title} changeText={this.handleChangeTitle} width={titleWidth} /> : <div className="static">{title}</div>}
           </div>
           {this.renderButtons()}
         </div>

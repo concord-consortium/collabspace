@@ -3,6 +3,7 @@ import * as React from "react"
 export interface InlineEditorComponentProps {
   text: string
   changeText: (newText: string) => void
+  width?: number
 }
 
 export interface InlineEditorComponentState {
@@ -82,9 +83,10 @@ export class InlineEditorComponent extends React.Component<InlineEditorComponent
 
   render() {
     const {text} = this.state
+    const style = this.props.width ? {width: this.props.width} : {}
 
     if (!this.state.editing) {
-      return <div className="static editable clickable" onDoubleClick={this.handleDoubleClick}>{text}</div>
+      return <div className="static editable clickable" onDoubleClick={this.handleDoubleClick} style={style}>{text}</div>
     }
 
     return <input
@@ -95,6 +97,7 @@ export class InlineEditorComponent extends React.Component<InlineEditorComponent
               onBlur={this.handleBlur}
               onKeyUp={this.handleKeyUp}
               onMouseDown={this.handleMouseDown}
+              style={style}
             />
   }
 }
