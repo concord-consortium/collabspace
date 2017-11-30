@@ -523,7 +523,7 @@ export class WorkspaceComponent extends React.Component<WorkspaceComponentProps,
         <div className="image-lightbox-background" />
         <div className="image-lightbox-image">
           <div>
-            <img src={this.state.viewArtifact.url} />
+            <img src={this.state.viewArtifact.url} draggable={false} />
           </div>
         </div>
       </div>
