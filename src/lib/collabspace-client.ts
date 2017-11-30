@@ -6,6 +6,8 @@ import { PortalActivity, PortalUser } from "./auth";
 
 const IFramePhoneFactory:IFramePhoneLib = require("iframe-phone")
 
+export const CollabSpaceClientThumbnailWidth = 50
+
 export interface IFramePhoneLib {
   ParentEndpoint(iframe:HTMLIFrameElement, afterConnectedCallback?: (args:any) => void):  IFramePhoneParent
   getIFrameEndpoint: () => IFramePhoneChild
@@ -101,6 +103,14 @@ export class CollabSpaceClient {
   }
 }
 
+export interface SaveArtifactBlobOptions {
+  title: string
+  blob: Blob
+  mimeType: string
+  extension?: string
+  thumbnailPNGBlob?: Blob
+}
+
 export class CollabSpaceClientPublication {
   publicationsRef: firebase.database.Reference
   artifactsRef: firebase.database.Reference
@@ -112,23 +122,44 @@ export class CollabSpaceClientPublication {
     this.artifactsStoragePath = req.artifactStoragePath
   }
 
-  saveArtifactBlob(title: string, blob:Blob, mimeType:string, extension?:string) {
+  saveArtifactBlob(options: SaveArtifactBlobOptions) {
     return new Promise<FirebaseArtifact>((resolve, reject) => {
+      const {title, blob, mimeType, thumbnailPNGBlob} = options
+      let {extension} = options
+
       if (!extension) {
         const parts = mimeType.split("/")
         extension = parts[parts.length - 1]
       }
-      const storagePath:string = `${this.artifactsStoragePath}/${uuidV4()}.${extension}`
-      const storageRef = firebase.storage().ref(storagePath)
-      storageRef
-        .put(blob, {contentType: mimeType})
-        .then((snapshot) => storageRef.getDownloadURL())
-        .then((url) => {
-          const artifact:FirebaseArtifact = {title, mimeType, url}
-          const artifactRef = this.artifactsRef.push(artifact)
-          resolve(artifact)
-        })
-        .catch(reject)
+
+      const blobId = uuidV4()
+
+      const saveBlob = (thumbnailUrl?:string) => {
+        const blobStoragePath:string = `${this.artifactsStoragePath}/${blobId}.${extension}`
+        const blobStorageRef = firebase.storage().ref(blobStoragePath)
+        blobStorageRef
+          .put(blob, {contentType: mimeType})
+          .then((snapshot) => blobStorageRef.getDownloadURL())
+          .then((url) => {
+            const artifact:FirebaseArtifact = {title, mimeType, url, thumbnailUrl}
+            const artifactRef = this.artifactsRef.push(artifact)
+            resolve(artifact)
+          })
+          .catch(reject)
+      }
+
+      if (thumbnailPNGBlob) {
+        const thumbnailStoragePath:string = `${this.artifactsStoragePath}/${blobId}-thumbnail.png`
+        const thumbnailStorageRef = firebase.storage().ref(thumbnailStoragePath)
+        thumbnailStorageRef
+          .put(thumbnailPNGBlob, {contentType: "image/png"})
+          .then((snapshot) => thumbnailStorageRef.getDownloadURL())
+          .then(saveBlob)
+          .catch(reject)
+      }
+      else {
+        saveBlob()
+      }
     })
   }
 }

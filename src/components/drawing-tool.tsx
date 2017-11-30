@@ -1,5 +1,5 @@
 import * as React from "react"
-import {CollabSpaceClient, CollabSpaceClientInitRequest, CollabSpaceClientPublishResponse} from "../lib/collabspace-client"
+import {CollabSpaceClient, CollabSpaceClientInitRequest, CollabSpaceClientPublishResponse, CollabSpaceClientThumbnailWidth} from "../lib/collabspace-client"
 import * as firebase from "firebase"
 import * as _ from "lodash"
 
@@ -76,17 +76,45 @@ export class DrawingToolComponent extends React.Component<DrawingToolComponentPr
       publish: (publication) => {
         const mimeType = "image/png"
         return new Promise<CollabSpaceClientPublishResponse>( (resolve, reject) => {
-          const blobSaver = (blob:Blob) => {
-            if (blob) {
-              publication.saveArtifactBlob("Drawing", blob, mimeType)
-                .then((artifact) => resolve({}))
-                .catch(reject)
+          const drawingCanvas:HTMLCanvasElement = this.drawingTool.canvas.getElement()
+
+          const drawingBlobPromise = new Promise<Blob>((resolve, reject) => {
+            const blobSaver = (blob:Blob) => {
+              blob ? resolve(blob) : reject("Couldn't get drawing from canvas!")
+            }
+            drawingCanvas.toBlob(blobSaver, mimeType)
+          })
+
+          const thumbnailBlobPromise = new Promise<Blob>((resolve, reject) => {
+            const thumbnailCanvas:HTMLCanvasElement = document.createElement("canvas")
+            thumbnailCanvas.width = CollabSpaceClientThumbnailWidth
+            thumbnailCanvas.height = CollabSpaceClientThumbnailWidth * (drawingCanvas.height / drawingCanvas.width)
+
+            const thumbnailContext = thumbnailCanvas.getContext("2d")
+            if (thumbnailContext) {
+              thumbnailContext.drawImage(drawingCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
+              const blobSaver = (blob:Blob) => {
+                blob ? resolve(blob) : reject("Couldn't get thumbnail drawing from canvas!")
+              }
+              thumbnailCanvas.toBlob(blobSaver, "image/png")
             }
             else {
-              reject("Couldn't create firebase file from canvas blob");
+              reject("Can't get thumbnail canvas!")
             }
-          }
-          this.drawingTool.canvas.getElement().toBlob(blobSaver, mimeType)
+          })
+
+          Promise.all([drawingBlobPromise, thumbnailBlobPromise])
+            .then(([drawingBlob, thumbnailPNGBlob]) => {
+              publication.saveArtifactBlob({
+                title: "Drawing",
+                blob: drawingBlob,
+                mimeType,
+                thumbnailPNGBlob
+              })
+              .then((artifact) => resolve({}))
+              .catch(reject)
+            })
+            .catch(reject)
         })
       }
     })

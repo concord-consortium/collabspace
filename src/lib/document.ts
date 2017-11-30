@@ -54,6 +54,7 @@ export interface FirebaseArtifact {
   title: string
   mimeType: string
   url: string
+  thumbnailUrl?: string
 }
 
 export interface FirebasePublicationWindow {
