@@ -42,7 +42,6 @@ export interface AppQueryParams {
 
 export class AppComponent extends React.Component<AppComponentProps, AppComponentState> {
   startingTitle: string
-  documentInfoRef: firebase.database.Reference|null
 
   constructor (props:AppComponentProps) {
     super(props)
@@ -149,16 +148,18 @@ export class AppComponent extends React.Component<AppComponentProps, AppComponen
   }
 
   renderChoseGroup() {
+    const {portalUser} = this.state
     const items:JSX.Element[] = []
     for (let i=1; i <= 99; i++) {
       items.push(<option value={i} key={i}>{i}</option>)
     }
     return (
       <form className="select-group" onSubmit={this.handleChoseGroup}>
-        <div>Select your group</div>
+        {portalUser ? <div className="welcome">Welcome {portalUser.fullName}</div> : null}
+        <div>Please select your group</div>
         <div>
           <select ref="group">{items}</select>
-          <input type="submit" value="Ok" />
+          <input type="submit" value="Select" />
         </div>
       </form>
     )

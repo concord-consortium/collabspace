@@ -2,8 +2,8 @@ $header-height: 60px;
 $toolbar-height: 38px;
 $titlebar-height: 22px;
 $minimized-area-height: 100px;
-$minimized-window-box-width: $minimized-area-height - 50;
-$minimized-window-box-height: $minimized-area-height - 60;
+$minimized-window-box-width: 55px;
+$minimized-window-box-height: 40px;
 $minimized-titlebar-height: 5px;
 $minimized-iframe-height: $minimized-window-box-height - $minimized-titlebar-height;
 $sidebar-width: 200px;
@@ -137,6 +137,11 @@ body {
 
   .select-group {
     text-align: center;
+
+    .welcome {
+      font-size: 18px;
+      font-weight: bold;
+    }
 
     div {
       margin: 10px 0;

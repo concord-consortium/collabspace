@@ -13,6 +13,7 @@ const timeagoInstance = timeago()
 
 export interface FirebasePublicationItem {
   id: string
+  index: number
   publication: FirebasePublication
 }
 
@@ -228,7 +229,7 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
 
   render() {
     const {publicationItem} = this.props
-    const {publication} = publicationItem
+    const {publication, index} = publicationItem
     const {group, createdAt} = publication
     const user = this.props.userMap[publication.creator]
     const name = user ? user.fullName : "Unknown Student"
@@ -236,7 +237,7 @@ export class SidebarPublicationComponent extends React.Component<SidebarPublicat
     return (
       <div className="publication">
         <div className="publication-header clickable" onClick={this.handleToggle}>
-          <span className="initials" title={name}>{initials}</span> in group {group} <span className="ago">{timeagoInstance.format(createdAt)}</span>
+          #{index} <span className="initials" title={name}>{initials}</span> in group {group} <span className="ago">{timeagoInstance.format(createdAt)}</span>
         </div>
         {this.state.expanded ? this.renderExpanded() : null}
       </div>
@@ -288,12 +289,15 @@ export class SidebarComponent extends React.Component<SidebarComponentProps, Sid
   handlePublicationAdded(snapshot:firebase.database.DataSnapshot) {
     const {publicationItems} = this.state
     const publication:FirebasePublication = snapshot.val()
-    const publicationItem:FirebasePublicationItem = {
-      id: snapshot.key as string,
-      publication
+    if (publication.activityId === this.props.portalActivity.id) {
+      const publicationItem:FirebasePublicationItem = {
+        index: publicationItems.length + 1,
+        id: snapshot.key as string,
+        publication
+      }
+      publicationItems.unshift(publicationItem)
+      this.setState({publicationItems})
     }
-    publicationItems.unshift(publicationItem)
-    this.setState({publicationItems})
   }
 
   getFilteredPublicationItems() {
@@ -302,9 +306,6 @@ export class SidebarComponent extends React.Component<SidebarComponentProps, Sid
     const email = portalUser.type === "student" ? portalUser.email : ""
     return publicationItems.filter((publicationItem) => {
       const {publication} = publicationItem
-      if (publication.activityId !== portalActivity.id) {
-        return false
-      }
       switch (filter) {
         case "group":
           return publication.group === group
