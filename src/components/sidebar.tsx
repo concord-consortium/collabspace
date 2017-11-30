@@ -47,7 +47,7 @@ export class SidebarPublicationArtifactComponent extends React.Component<Sidebar
     const url = artifact.thumbnailUrl || artifact.url
     return (
       <div className="artifact" onClick={this.toggleViewArtifact}>
-        <img src={url} title={artifact.title} style={{width: CollabSpaceClientThumbnailWidth}} />
+        <img src={url} title={artifact.title} style={{width: CollabSpaceClientThumbnailWidth}} draggable={false} />
       </div>
     )
   }
